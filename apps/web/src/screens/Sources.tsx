@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, FileText, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { Badge, Panel, Spinner, cx } from "../components/ui";
+import { Badge, PageHeader, Panel, Spinner, cx } from "../components/ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { DocumentMeta } from "../lib/types";
@@ -37,12 +37,12 @@ export function Sources() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <Header title="Corpus" sub="Browse and manage the indexed knowledge base" />
+      <PageHeader title="Document Library" sub="Browse, open, and manage indexed documents" />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {types.map((t) => (
-          <button key={t || "all"} onClick={() => setType(t)} className={cx("chip uppercase", type === t && "chip-active")}>
-            {t || "all"}
+          <button key={t || "all"} onClick={() => setType(t)} className={cx("chip capitalize", type === t && "chip-active")}>
+            {t || "All types"}
           </button>
         ))}
       </div>
@@ -56,14 +56,14 @@ export function Sources() {
           {(docs.data ?? []).map((d) => (
             <Panel key={d.id} className="flex flex-col p-4">
               <div className="flex items-start justify-between">
-                <FileText className="h-5 w-5 text-signal" />
+                <FileText className="h-5 w-5 text-accent" />
                 <div className="flex gap-1">
                   <Badge tone={TYPE_TONE[d.doc_type] ?? "neutral"}>{d.doc_type}</Badge>
                   {d.classification !== "UNCLASSIFIED" && <Badge tone="caution">{d.classification}</Badge>}
                 </div>
               </div>
               <div className="mt-2 font-mono text-xs text-fg-low">{d.doc_code}</div>
-              <div className="font-display text-base font-semibold leading-snug text-fg-hi">{d.title}</div>
+              <div className="text-base font-semibold leading-snug text-fg-hi">{d.title}</div>
               <div className="stamp mt-2 flex flex-wrap gap-x-3 gap-y-1 text-fg-low">
                 <span>rev {d.revision}</span>
                 <span>{d.page_count}p</span>
@@ -84,15 +84,6 @@ export function Sources() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-export function Header({ title, sub }: { title: string; sub: string }) {
-  return (
-    <div className="mb-5">
-      <span className="eyebrow">{sub}</span>
-      <h1 className="font-display text-3xl font-bold tracking-wide text-fg-hi">{title}</h1>
     </div>
   );
 }

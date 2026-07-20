@@ -2,8 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Download, FileDown, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { Badge, Panel } from "../components/ui";
-import { Header } from "./Sources";
+import { Badge, PageHeader, Panel } from "../components/ui";
 import { api } from "../lib/api";
 
 interface Field {
@@ -54,14 +53,14 @@ export function Reports() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <Header title="Report Builder" sub="Template-bound, cited, exportable" />
+      <PageHeader title="Reports" sub="Create and export structured reports with source citations" />
 
       {!draft ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {(templates.data ?? []).map((t: { id: string; name: string; description: string; fields: unknown[] }) => (
             <Panel key={t.id} className="flex flex-col p-5">
-              <FileText className="h-5 w-5 text-signal" />
-              <div className="mt-2 font-display text-lg font-semibold text-fg-hi">{t.name}</div>
+              <FileText className="h-5 w-5 text-accent" />
+              <div className="mt-2 text-base font-semibold text-fg-hi">{t.name}</div>
               <p className="mt-1 flex-1 text-sm text-fg-mid">{t.description}</p>
               <div className="stamp mt-2 text-fg-low">{t.fields.length} cited fields</div>
               <button className="btn-primary mt-4" onClick={() => generate(t.id)} disabled={busy}>
@@ -74,8 +73,8 @@ export function Reports() {
         <div>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="font-display text-xl font-bold text-fg-hi">{draft.title}</div>
-              <div className="stamp text-fg-low">draft · editable before export · classification marking applied</div>
+              <div className="text-lg font-semibold text-fg-hi">{draft.title}</div>
+              <div className="stamp text-fg-low">Draft · editable before export · classification marking applied</div>
             </div>
             <div className="flex gap-2">
               <button className="btn-ghost" onClick={() => setDraft(null)}>Back</button>
@@ -89,11 +88,11 @@ export function Reports() {
                 <div className="mb-2 flex items-center justify-between">
                   <span className="eyebrow">{f.label}</span>
                   <div className="flex gap-1">
-                    {f.citations?.map((c) => <Badge key={c.sid} tone="signal">S{c.sid} {c.doc} p.{c.page}</Badge>)}
+                    {f.citations?.map((c) => <Badge key={c.sid} tone="signal">{c.sid} · {c.doc} p.{c.page}</Badge>)}
                   </div>
                 </div>
                 <textarea
-                  className="field min-h-[90px] resize-y font-sans leading-6"
+                  className="field min-h-[90px] resize-y leading-6"
                   value={f.value}
                   onChange={(e) => {
                     const fields = [...draft.fields];

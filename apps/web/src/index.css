@@ -4,7 +4,7 @@
 
 :root {
   color-scheme: dark;
-  --band: #1c7a3f; /* active classification band colour, set at runtime */
+  --band: #4c7a52; /* active classification band colour, set at runtime */
 }
 
 * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
@@ -12,71 +12,63 @@
 html, body, #root { height: 100%; }
 
 body {
-  @apply bg-ink text-fg-hi font-sans;
+  @apply bg-bg text-fg-hi font-sans;
   margin: 0;
-  /* faint engineering-drawing grid — the console sits on a drawn sheet */
-  background-image:
-    linear-gradient(to right, rgba(46, 66, 86, 0.16) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(46, 66, 86, 0.16) 1px, transparent 1px);
-  background-size: 34px 34px;
 }
 
-::selection { background: rgba(44, 224, 196, 0.28); color: #eafffb; }
+::selection { background: rgba(74, 127, 181, 0.32); color: #ffffff; }
 
-/* Scrollbars — thin, instrument-like */
+/* Scrollbars — thin, neutral */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: #22303f; border: 2px solid transparent; background-clip: padding-box;
+  background: #1F3A66; border: 2px solid transparent; background-clip: padding-box;
   border-radius: 9999px;
 }
-*::-webkit-scrollbar-thumb:hover { background: #2e4256; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: #2E4F85; background-clip: padding-box; }
 
 /* Focus ring — always visible, accent (WCAG) */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--tw-ring-color, #2ce0c4);
+  outline: 2px solid var(--tw-ring-color, #4A7FB5);
   outline-offset: 2px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 @layer components {
-  /* Instrument panel: hairline border on a raised surface. Corner reticle
-     ticks are added by the <Panel> component. */
   .panel {
-    @apply relative border border-line bg-surface-1;
+    @apply relative rounded-lg border border-line bg-surface-2 shadow-panel;
   }
-  .panel-2 { @apply relative border border-line bg-surface-2; }
+  .panel-2 { @apply relative rounded-lg border border-line bg-surface-3 shadow-panel; }
 
   .eyebrow {
-    @apply font-display uppercase text-fg-low text-[11px] font-semibold;
-    letter-spacing: 0.22em;
+    @apply font-sans text-[11px] font-medium uppercase text-fg-low;
+    letter-spacing: 0.05em;
   }
   .stamp {
-    @apply font-mono text-[11px] uppercase tracking-widest text-fg-low;
+    @apply font-mono text-[11px] text-fg-low;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-[3px] px-3.5 py-2
-           font-display font-semibold uppercase tracking-wide text-sm
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2
+           font-sans font-medium text-sm
            transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
-    letter-spacing: 0.06em;
   }
   .btn-primary {
-    @apply btn bg-signal text-ink hover:bg-signal-glow;
+    @apply btn bg-accent text-white hover:bg-accent-dim;
   }
   .btn-ghost {
-    @apply btn border border-line text-fg-mid hover:text-fg-hi hover:border-line-strong;
+    @apply btn border border-line text-fg-mid hover:text-fg-hi hover:border-line-strong hover:bg-surface-3;
   }
   .field {
-    @apply w-full rounded-[3px] border border-line bg-ink/60 px-3 py-2 text-sm
-           text-fg-hi placeholder:text-fg-low focus:border-signal/60
-           focus:ring-1 focus:ring-signal/40 outline-none;
+    @apply w-full rounded-md border border-line bg-surface-1 px-3 py-2 text-sm
+           text-fg-hi placeholder:text-fg-low focus:border-accent/70
+           focus:ring-1 focus:ring-accent/40 outline-none;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-line
-           bg-surface-2 px-2.5 py-1 text-xs text-fg-mid;
+           bg-surface-1 px-3 py-1 text-xs text-fg-mid transition-colors;
   }
   .chip-active {
-    @apply border-signal/50 bg-signal/10 text-signal;
+    @apply border-accent/50 bg-accent/15 text-fg-hi;
   }
 }
 

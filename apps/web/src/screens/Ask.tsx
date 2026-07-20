@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { CornerDownLeft, Info, Radar, SlidersHorizontal } from "lucide-react";
+import { CornerDownLeft, Info, Loader2, Search, SlidersHorizontal } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { AnswerBody, ConfidenceGauge, EvidenceRail, GroundedStamp } from "../components/answer";
 import { SourceViewer, type SourceTarget } from "../components/SourceViewer";
-import { Badge, Panel, cx } from "../components/ui";
+import { Badge, PageHeader, Panel, cx } from "../components/ui";
 import { api } from "../lib/api";
 import { streamQuery } from "../lib/stream";
 import type { Citation, Evidence, QueryResult } from "../lib/types";
@@ -74,81 +74,88 @@ export function Ask() {
   const latest = [...thread].reverse().find((t) => t.result?.grounded)?.result;
 
   return (
-    <div className="grid h-full grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="flex min-h-0 flex-col">
-        {/* Scope bar */}
-        <Panel className="mb-4 p-4">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-signal" />
-            <span className="eyebrow">Query scope</span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(colls.data ?? []).map((c: { slug: string; name: string }) => (
-              <button key={c.slug} className={cx("chip", collections.has(c.slug) && "chip-active")}
-                onClick={() => toggle(collections, c.slug, setCollections)}>
-                {c.name}
-              </button>
-            ))}
-            <span className="mx-1 w-px self-stretch bg-line" />
-            {DOC_TYPES.map((d) => (
-              <button key={d} className={cx("chip uppercase", docTypes.has(d) && "chip-active")}
-                onClick={() => toggle(docTypes, d, setDocTypes)}>
-                {d}
-              </button>
-            ))}
-          </div>
-        </Panel>
+    <div className="flex h-full flex-col">
+      <PageHeader title="Ask" sub="Query the document library for a cited, source-verified answer" />
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-h-0 flex-col">
+          {/* Scope bar */}
+          <Panel className="mb-4 p-4">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-accent" />
+              <span className="eyebrow">Search scope</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(colls.data ?? []).map((c: { slug: string; name: string }) => (
+                <button key={c.slug} className={cx("chip", collections.has(c.slug) && "chip-active")}
+                  onClick={() => toggle(collections, c.slug, setCollections)}>
+                  {c.name}
+                </button>
+              ))}
+              <span className="mx-1 w-px self-stretch bg-line" />
+              {DOC_TYPES.map((d) => (
+                <button key={d} className={cx("chip capitalize", docTypes.has(d) && "chip-active")}
+                  onClick={() => toggle(docTypes, d, setDocTypes)}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </Panel>
 
-        {/* Thread */}
-        <div className="min-h-0 flex-1 space-y-5 overflow-auto pr-1">
-          {thread.length === 0 && <EmptyState onPick={ask} />}
-          {thread.map((turn, i) => (
-            <TurnView key={i} turn={turn} onOpen={openCitation} />
-          ))}
+          {/* Thread */}
+          <div className="min-h-0 flex-1 space-y-5 overflow-auto pr-1">
+            {thread.length === 0 && <EmptyState onPick={ask} />}
+            {thread.map((turn, i) => (
+              <TurnView key={i} turn={turn} onOpen={openCitation} />
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="mt-4">
+            <Panel className="flex items-end gap-3 p-3">
+              {busy ? (
+                <Loader2 className="mb-2 h-5 w-5 shrink-0 animate-spin text-accent" />
+              ) : (
+                <Search className="mb-2 h-5 w-5 shrink-0 text-fg-low" />
+              )}
+              <textarea
+                className="field max-h-40 min-h-[44px] resize-none border-0 bg-transparent focus:ring-0"
+                rows={1}
+                value={question}
+                placeholder="Ask a question about the document library…"
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    ask(question);
+                  }
+                }}
+              />
+              <button className="btn-primary mb-1" disabled={busy || !question.trim()} onClick={() => ask(question)}>
+                Ask <CornerDownLeft className="h-4 w-4" />
+              </button>
+            </Panel>
+            <div className="mt-1.5 flex items-center gap-2 px-1">
+              <Info className="h-3 w-3 text-fg-low" />
+              <span className="stamp text-fg-low">Answers are composed only from retrieved sources · Enter to send · Shift+Enter for newline</span>
+            </div>
+          </div>
         </div>
 
-        {/* Input */}
-        <div className="mt-4">
-          <Panel className="flex items-end gap-3 p-3" glow={busy}>
-            <Radar className={cx("mb-2 h-5 w-5 shrink-0", busy ? "animate-spin text-signal" : "text-fg-low")} />
-            <textarea
-              className="field max-h-40 min-h-[44px] resize-none border-0 bg-transparent focus:ring-0"
-              rows={1}
-              value={question}
-              placeholder="Ask a grounded question over the corpus…"
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  ask(question);
-                }
-              }}
-            />
-            <button className="btn-primary mb-1" disabled={busy || !question.trim()} onClick={() => ask(question)}>
-              Ask <CornerDownLeft className="h-4 w-4" />
-            </button>
-          </Panel>
-          <div className="mt-1.5 flex items-center gap-2 px-1">
-            <Info className="h-3 w-3 text-fg-low" />
-            <span className="stamp text-fg-low">Answers are composed only from retrieved sources · Enter to send · Shift+Enter for newline</span>
-          </div>
+        {/* Evidence rail (latest grounded answer) */}
+        <div className="hidden min-h-0 xl:block">
+          {latest ? (
+            <EvidenceRail evidence={latest.evidence} onOpen={openEvidence} />
+          ) : (
+            <Panel className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+              <Search className="h-6 w-6 text-fg-low" />
+              <span className="eyebrow">Evidence</span>
+              <p className="text-xs text-fg-low">Retrieved source passages appear here, ranked by relevance.</p>
+            </Panel>
+          )}
         </div>
-      </div>
 
-      {/* Evidence rail (latest grounded answer) */}
-      <div className="hidden min-h-0 xl:block">
-        {latest ? (
-          <EvidenceRail evidence={latest.evidence} onOpen={openEvidence} />
-        ) : (
-          <Panel className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-            <Radar className="h-7 w-7 text-fg-low" />
-            <span className="eyebrow">Evidence</span>
-            <p className="text-xs text-fg-low">Retrieved source passages appear here, ranked by relevance.</p>
-          </Panel>
-        )}
+        {target && <SourceViewer target={target} onClose={() => setTarget(null)} />}
       </div>
-
-      {target && <SourceViewer target={target} onClose={() => setTarget(null)} />}
     </div>
   );
 }
@@ -159,7 +166,7 @@ function TurnView({ turn, onOpen }: { turn: Turn; onOpen: (c: Citation) => void 
     <div className="animate-rise space-y-3">
       {/* question */}
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-[3px] rounded-br-none border border-line bg-surface-2 px-4 py-2 text-sm text-fg-hi">
+        <div className="max-w-[85%] rounded-lg rounded-br-sm border border-line bg-surface-3 px-4 py-2 text-sm text-fg-hi">
           {turn.question}
         </div>
       </div>
@@ -171,7 +178,7 @@ function TurnView({ turn, onOpen }: { turn: Turn; onOpen: (c: Citation) => void 
         ) : turn.streaming && !r ? (
           <p className="text-[15px] leading-7 text-fg-mid">
             {turn.text}
-            <span className="ml-0.5 inline-block h-4 w-2 animate-caret bg-signal align-middle" />
+            <span className="ml-0.5 inline-block h-4 w-2 animate-caret bg-accent align-middle" />
           </p>
         ) : r?.grounded ? (
           <>
@@ -185,8 +192,8 @@ function TurnView({ turn, onOpen }: { turn: Turn; onOpen: (c: Citation) => void 
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
               {r.citations.map((c) => (
                 <button key={c.chunk_id} onClick={() => onOpen(c)}
-                  className="chip hover:border-signal/50">
-                  <span className="font-mono text-[11px] text-signal">S{c.sid}</span>
+                  className="chip hover:border-accent/40">
+                  <span className="font-mono text-[11px] text-accent">{c.sid}</span>
                   {c.doc} §{c.section} p.{c.page}
                   {c.superseded && <Badge tone="caution">superseded</Badge>}
                 </button>
@@ -206,14 +213,14 @@ function TurnView({ turn, onOpen }: { turn: Turn; onOpen: (c: Citation) => void 
 
 function AbstainCard({ reason, provider, latency }: { reason?: string | null; provider?: string; latency?: number }) {
   return (
-    <div className="rounded-[3px] border border-critical/40 bg-critical/5 p-5">
+    <div className="rounded-lg border border-critical/30 bg-critical/5 p-5">
       <div className="mb-3">
         <GroundedStamp grounded={false} />
       </div>
-      <h3 className="font-display text-lg font-semibold text-fg-hi">Insufficient sources in the corpus</h3>
+      <h3 className="text-base font-semibold text-fg-hi">No sufficient sources found</h3>
       <p className="mt-1 max-w-xl text-sm leading-6 text-fg-mid">
-        The retrieval did not surface passages that support a grounded answer, so the system abstains rather
-        than guessing. Try broadening the scope, or confirm the topic exists in the corpus.
+        The search did not return passages that support a confident answer, so no answer was generated.
+        Try broadening the search scope, or confirm the topic exists in the document library.
       </p>
       <div className="mt-3 flex items-center gap-2">
         <Badge tone="critical">grounded: false</Badge>
@@ -227,16 +234,15 @@ function AbstainCard({ reason, provider, latency }: { reason?: string | null; pr
 function EmptyState({ onPick }: { onPick: (q: string) => void }) {
   return (
     <Panel className="animate-rise p-8">
-      <span className="eyebrow">Grounded Q&amp;A</span>
-      <h2 className="mt-2 font-display text-2xl font-bold text-fg-hi">Ask the corpus a question</h2>
+      <h2 className="text-lg font-semibold text-fg-hi">Ask a question</h2>
       <p className="mt-1 max-w-xl text-sm leading-6 text-fg-mid">
-        Every answer is retrieved from your documents, reranked for relevance, and cited to the exact
-        section and page. Try one of these against the demonstration corpus:
+        Answers are retrieved from your documents, ranked for relevance, and cited to the exact
+        section and page. Try one of these against the demonstration document library:
       </p>
       <div className="mt-4 grid gap-2">
         {SUGGESTIONS.map((s) => (
           <button key={s} onClick={() => onPick(s)}
-            className="flex items-center justify-between rounded-[3px] border border-line bg-surface-2/50 px-4 py-2.5 text-left text-sm text-fg-mid transition-colors hover:border-signal/40 hover:text-fg-hi">
+            className="flex items-center justify-between rounded-md border border-line bg-surface-1 px-4 py-2.5 text-left text-sm text-fg-mid transition-colors hover:border-accent/40 hover:text-fg-hi">
             {s}
             <CornerDownLeft className="h-3.5 w-3.5 text-fg-low" />
           </button>

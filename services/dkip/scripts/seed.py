@@ -82,7 +82,7 @@ def main() -> None:
         for item in manifest:
             path = corpus_dir / item["filename"]
             row = IngestionFile(job_id=job.id, filename=item["filename"], status="pending")
-            db.add(row); db.flush()
+            db.add(row); db.commit()  # durable before risky I/O, so a failure below can't roll it back
             try:
                 meta = {"collection_id": colls.get(item["collection"]),
                         "doc_code": item["doc_code"], "title": item["title"],
@@ -101,7 +101,6 @@ def main() -> None:
                       f"({res['chunks']} chunks, ocr={res['ocr']})")
             except Exception as e:  # noqa: BLE001
                 db.rollback()
-                row = db.get(IngestionFile, row.id)
                 row.status = "failed"; row.error = str(e)[:500]; failed += 1
                 print(f"[seed] {item['filename']}: FAILED {e}")
             db.commit()

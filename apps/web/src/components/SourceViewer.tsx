@@ -72,20 +72,20 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
   }, [meta]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
       <div className="flex h-[88vh] w-full max-w-6xl gap-4" onClick={(e) => e.stopPropagation()}>
         {/* Document render */}
         <Panel className="flex min-w-0 flex-1 flex-col p-4">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="eyebrow">Source Viewer</span>
+              <span className="eyebrow">Source viewer</span>
               {meta?.superseded && <Badge tone="caution">superseded revision</Badge>}
             </div>
             <button onClick={onClose} className="btn-ghost !p-2" aria-label="Close">
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div ref={containerRef} className="relative flex-1 overflow-auto rounded-[3px] bg-[#11161d] p-4">
+          <div ref={containerRef} className="relative flex-1 overflow-auto rounded-md border border-line bg-surface-1 p-4">
             {rendering && (
               <div className="absolute inset-0 z-10 flex items-center justify-center">
                 <Spinner className="h-6 w-6" />
@@ -95,10 +95,10 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
               <canvas ref={canvasRef} className="block shadow-lg" />
               {highlight && (
                 <div
-                  className="pointer-events-none absolute animate-rise border-2 border-signal bg-signal/20"
+                  className="pointer-events-none absolute animate-rise border-2 border-accent bg-accent/15"
                   style={{ left: highlight.left, top: highlight.top, width: highlight.w, height: highlight.h }}
                 >
-                  <span className="absolute -top-5 left-0 rounded-[2px] bg-signal px-1 font-mono text-[10px] text-ink">
+                  <span className="absolute -top-5 left-0 rounded bg-accent px-1 font-mono text-[10px] text-white">
                     cited passage
                   </span>
                 </div>
@@ -121,7 +121,7 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
             </div>
           ) : (
             <>
-              <span className="eyebrow">Citation Anchor</span>
+              <span className="eyebrow">Citation anchor</span>
               <div className="mt-3 space-y-2 font-mono text-xs">
                 <Row k="DOC" v={meta.doc_code} />
                 <Row k="TITLE" v={meta.title} />
@@ -133,7 +133,7 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
               </div>
               <div className="mt-4 flex-1 overflow-auto">
                 <span className="eyebrow">Supporting passage</span>
-                <p className="mt-2 whitespace-pre-wrap rounded-[3px] border border-line bg-ink/50 p-3 text-[13px] leading-6 text-fg-hi">
+                <p className="mt-2 whitespace-pre-wrap rounded-md border border-line bg-surface-1 p-3 text-[13px] leading-6 text-fg-hi">
                   {meta.text}
                 </p>
               </div>

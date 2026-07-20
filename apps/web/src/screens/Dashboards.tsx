@@ -3,8 +3,7 @@ import { Database, Loader2, Search } from "lucide-react";
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { Panel } from "../components/ui";
-import { Header } from "./Sources";
+import { PageHeader, Panel } from "../components/ui";
 import { api } from "../lib/api";
 
 interface Fleet {
@@ -13,7 +12,7 @@ interface Fleet {
   by_unit: { unit: string; serviceable: number; total: number }[];
 }
 
-const AXIS = { stroke: "#64788C", fontSize: 11, fontFamily: "IBM Plex Mono" };
+const AXIS = { stroke: "#7C93AF", fontSize: 11, fontFamily: "IBM Plex Mono" };
 
 export function Dashboards() {
   const fleet = useQuery<Fleet>({ queryKey: ["fleet"], queryFn: () => api.get("/dashboards/fleet") });
@@ -22,18 +21,18 @@ export function Dashboards() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <Header title="Fleet Readiness" sub="Aggregates over structured corpus data" />
+      <PageHeader title="Fleet Readiness" sub="Equipment status and serviceability metrics" />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Total Holdings" value={k.t} tone="text-fg-hi" />
+        <Kpi label="Total holdings" value={k.t} tone="text-fg-hi" />
         <Kpi label="Serviceable" value={k.s} tone="text-ok" />
-        <Kpi label="Awaiting Spares" value={k.a} tone="text-caution" />
+        <Kpi label="Awaiting spares" value={k.a} tone="text-caution" />
         <Kpi label="Readiness" value={readiness} suffix="%" tone={readiness >= 75 ? "text-ok" : "text-caution"} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Chart title="Serviceable vs Total — by equipment" data={fleet.data?.by_equipment ?? []} nameKey="equipment" />
-        <Chart title="Serviceable vs Total — by unit" data={fleet.data?.by_unit ?? []} nameKey="unit" />
+        <Chart title="Serviceable vs. total — by equipment" data={fleet.data?.by_equipment ?? []} nameKey="equipment" />
+        <Chart title="Serviceable vs. total — by unit" data={fleet.data?.by_unit ?? []} nameKey="unit" />
       </div>
 
       <StructuredQuery />
@@ -45,9 +44,9 @@ function Kpi({ label, value, suffix, tone }: { label: string; value?: number; su
   return (
     <Panel className="p-4">
       <div className="stamp text-fg-low">{label}</div>
-      <div className={`mt-1 font-display text-3xl font-bold ${tone}`}>
+      <div className={`mt-1 text-2xl font-semibold ${tone}`}>
         {value ?? "—"}
-        {suffix && <span className="text-lg">{suffix}</span>}
+        {suffix && <span className="text-base">{suffix}</span>}
       </div>
     </Panel>
   );
@@ -59,19 +58,19 @@ function Chart({ title, data, nameKey }: { title: string; data: any[]; nameKey: 
       <div className="eyebrow mb-3">{title}</div>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} barGap={2}>
-          <CartesianGrid strokeDasharray="2 4" stroke="#223040" vertical={false} />
-          <XAxis dataKey={nameKey} tick={AXIS} axisLine={{ stroke: "#223040" }} tickLine={false} />
+          <CartesianGrid strokeDasharray="2 4" stroke="#1F3A66" vertical={false} />
+          <XAxis dataKey={nameKey} tick={AXIS} axisLine={{ stroke: "#1F3A66" }} tickLine={false} />
           <YAxis tick={AXIS} axisLine={false} tickLine={false} width={28} />
           <Tooltip
-            cursor={{ fill: "rgba(44,224,196,0.06)" }}
-            contentStyle={{ background: "#0F151C", border: "1px solid #2E4256", borderRadius: 3, fontSize: 12 }}
-            labelStyle={{ color: "#9FB0C0" }}
+            cursor={{ fill: "rgba(74,127,181,0.08)" }}
+            contentStyle={{ background: "#0D275C", border: "1px solid #2E4F85", borderRadius: 6, fontSize: 12 }}
+            labelStyle={{ color: "#CDDBE8" }}
           />
-          <Bar dataKey="total" radius={[2, 2, 0, 0]}>
-            {data.map((_, i) => <Cell key={i} fill="#1C2733" />)}
+          <Bar dataKey="total" radius={[3, 3, 0, 0]}>
+            {data.map((_, i) => <Cell key={i} fill="#1F3A66" />)}
           </Bar>
-          <Bar dataKey="serviceable" radius={[2, 2, 0, 0]}>
-            {data.map((_, i) => <Cell key={i} fill="#2CE0C4" />)}
+          <Bar dataKey="serviceable" radius={[3, 3, 0, 0]}>
+            {data.map((_, i) => <Cell key={i} fill="#5E9468" />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -101,7 +100,7 @@ function StructuredQuery() {
   return (
     <Panel className="mt-4 p-5">
       <div className="mb-3 flex items-center gap-2">
-        <Database className="h-4 w-4 text-signal" />
+        <Database className="h-4 w-4 text-accent" />
         <span className="eyebrow">Structured question · constrained read-only SQL</span>
       </div>
       <div className="flex gap-2">
@@ -110,15 +109,15 @@ function StructuredQuery() {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Ask
         </button>
       </div>
-      {error && <div className="mt-3 rounded-[3px] border border-critical/40 bg-critical/10 px-3 py-2 text-xs text-critical">{error}</div>}
+      {error && <div className="mt-3 rounded-md border border-critical/40 bg-critical/10 px-3 py-2 text-xs text-critical">{error}</div>}
       {res && (
         <div className="mt-4">
           <div className="stamp mb-1 text-fg-low">Generated SQL (whitelisted, read-only)</div>
-          <pre className="overflow-x-auto rounded-[3px] border border-line bg-ink/60 p-3 font-mono text-xs text-signal">{res.sql}</pre>
+          <pre className="overflow-x-auto rounded-md border border-line bg-surface-1 p-3 font-mono text-xs text-accent">{res.sql}</pre>
           <div className="stamp mb-1 mt-3 text-fg-low">Contributing rows — drill-down</div>
-          <div className="overflow-x-auto rounded-[3px] border border-line">
+          <div className="overflow-x-auto rounded-md border border-line">
             <table className="w-full text-left text-xs">
-              <thead className="bg-surface-2 font-mono text-fg-low">
+              <thead className="bg-surface-1 font-mono text-fg-low">
                 <tr>{res.rows[0] && Object.keys(res.rows[0]).map((h) => <th key={h} className="px-3 py-2 uppercase">{h}</th>)}</tr>
               </thead>
               <tbody>

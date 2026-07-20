@@ -1,14 +1,13 @@
-import { Crosshair, KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { KeyRound, Loader2, Shield, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
-import { ClassificationBanner } from "../components/ClassificationBanner";
 import { Badge, Panel } from "../components/ui";
 import { useAuth } from "../lib/auth";
 
 const DEMO = [
-  ["admin", "admin123", "Admin · CLR-4"],
-  ["analyst", "analyst123", "User · CLR-2"],
-  ["operator", "operator123", "User · CLR-1"],
+  ["admin", "admin123", "Administrator"],
+  ["analyst", "analyst123", "Analyst"],
+  ["operator", "operator123", "Operator"],
 ];
 
 export function Login() {
@@ -33,91 +32,82 @@ export function Login() {
 
   return (
     <div className="flex h-full flex-col">
-      <ClassificationBanner text="UNCLASSIFIED // FOR DEMONSTRATION" edge="top" />
       <div className="grid min-h-0 flex-1 lg:grid-cols-[1.1fr_0.9fr]">
-        {/* Identity / thesis panel */}
-        <div className="relative hidden overflow-hidden border-r border-line lg:flex lg:flex-col lg:justify-between lg:p-12">
-          <div className="pointer-events-none absolute inset-0 opacity-[0.5]">
-            <div className="absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-signal/10" />
-            <div className="absolute left-1/2 top-1/2 h-[380px] w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-signal/10" />
-            <div className="absolute left-1/2 top-1/2 h-[200px] w-[200px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-signal/15" />
-            <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-signal/10" />
-            <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-signal/10" />
-          </div>
-          <div className="relative flex items-center gap-3">
-            <Crosshair className="h-9 w-9 text-signal" strokeWidth={1.3} />
+        {/* Product panel */}
+        <div className="hidden flex-col justify-between border-r border-line bg-surface-1 p-12 lg:flex">
+          <div className="flex items-center gap-3">
+            <Shield className="h-8 w-8 text-accent" strokeWidth={1.6} />
             <div>
-              <div className="font-display text-3xl font-bold tracking-wide">DKIP</div>
-              <div className="eyebrow">Defense Knowledge Intelligence</div>
+              <div className="text-lg font-semibold text-fg-hi">DKIP</div>
+              <div className="text-xs text-fg-low">Defense Knowledge Intelligence Platform</div>
             </div>
           </div>
-          <div className="relative max-w-lg">
-            <h1 className="font-display text-4xl font-bold leading-tight text-fg-hi">
-              Ask the corpus.<br />Get a <span className="text-signal">cited, grounded</span> answer.
+          <div className="max-w-lg">
+            <h1 className="text-3xl font-semibold leading-tight text-fg-hi">
+              Verified answers from your technical documentation
             </h1>
             <p className="mt-4 text-sm leading-6 text-fg-mid">
-              Natural-language questions over your own technical documentation — retrieved,
-              reranked and answered only from source passages, with every claim traceable to a
-              document, section and page. The system abstains when the corpus cannot support an
-              answer.
+              DKIP retrieves and ranks passages from your organization&apos;s document library and
+              generates answers backed by source citations. If the available documentation does not
+              support a confident answer, the system declines rather than guessing.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Badge tone="signal">Hybrid retrieval</Badge>
-              <Badge tone="signal">Cross-encoder rerank</Badge>
-              <Badge tone="ok">Grounded &amp; cited</Badge>
-              <Badge tone="caution">Abstains, never guesses</Badge>
+              <Badge tone="signal">Hybrid search</Badge>
+              <Badge tone="ok">Source-verified answers</Badge>
+              <Badge tone="neutral">Full audit trail</Badge>
+              <Badge tone="neutral">Role-based access control</Badge>
             </div>
           </div>
-          <div className="relative stamp text-fg-low">POC 1 · v1.0 · Air-gap capable · Model-gateway swap</div>
+          <div className="text-xs text-fg-low">DKIP · Proof of Concept 1 · v1.0</div>
         </div>
 
         {/* Sign-in panel */}
         <div className="flex items-center justify-center p-6">
-          <Panel className="w-full max-w-md p-8" glow>
+          <Panel className="w-full max-w-md p-8">
             <div className="mb-6 flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-signal" />
-              <span className="eyebrow">Authorized access</span>
+              <ShieldCheck className="h-4 w-4 text-accent" />
+              <span className="eyebrow">Authorized access only</span>
             </div>
-            <h2 className="font-display text-2xl font-bold text-fg-hi">Sign in</h2>
-            <p className="mt-1 text-sm text-fg-mid">Authenticate to query the knowledge corpus.</p>
+            <h2 className="text-xl font-semibold text-fg-hi">Sign in</h2>
+            <p className="mt-1 text-sm text-fg-mid">Enter your credentials to access the platform.</p>
 
             <form onSubmit={submit} className="mt-6 space-y-4">
               <div>
-                <label className="stamp mb-1 block text-fg-mid">Username</label>
+                <label className="mb-1 block text-xs font-medium text-fg-mid">Username</label>
                 <input className="field" value={username} autoFocus autoComplete="username"
-                  onChange={(e) => setUsername(e.target.value)} placeholder="analyst" />
+                  onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" />
               </div>
               <div>
-                <label className="stamp mb-1 block text-fg-mid">Password</label>
+                <label className="mb-1 block text-xs font-medium text-fg-mid">Password</label>
                 <input className="field" type="password" value={password} autoComplete="current-password"
-                  onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                  onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" />
               </div>
               {error && (
-                <div className="rounded-[3px] border border-critical/40 bg-critical/10 px-3 py-2 text-xs text-critical">
+                <div className="rounded-md border border-critical/40 bg-critical/10 px-3 py-2 text-xs text-critical">
                   {error}
                 </div>
               )}
               <button type="submit" className="btn-primary w-full" disabled={busy || !username || !password}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                {busy ? "Verifying" : "Sign in"}
+                {busy ? "Signing in…" : "Sign in"}
               </button>
             </form>
 
             {keycloakConfigured && (
               <button onClick={() => loginWithKeycloak().catch((e) => setError(e.message))}
                 className="btn-ghost mt-3 w-full">
-                Sign in with Keycloak SSO
+                Sign in with SSO
               </button>
             )}
 
             <div className="mt-6 border-t border-line pt-4">
-              <div className="stamp mb-2 text-fg-low">Demonstration accounts</div>
+              <div className="mb-2 text-xs font-medium text-fg-low">Demo accounts</div>
               <div className="grid gap-1.5">
                 {DEMO.map(([u, p, r]) => (
                   <button key={u} onClick={() => { setUsername(u); setPassword(p); }}
-                    className="flex items-center justify-between rounded-[3px] border border-line bg-surface-2/50 px-3 py-1.5 text-left hover:border-signal/40">
+                    className="flex items-center justify-between rounded-md border border-line bg-surface-1 px-3 py-1.5 text-left hover:border-accent/40">
                     <span className="font-mono text-xs text-fg-hi">{u} / {p}</span>
-                    <span className="stamp text-fg-low">{r}</span>
+                    <span className="text-xs text-fg-low">{r}</span>
                   </button>
                 ))}
               </div>
@@ -125,7 +115,6 @@ export function Login() {
           </Panel>
         </div>
       </div>
-      <ClassificationBanner text="UNCLASSIFIED // FOR DEMONSTRATION" edge="bottom" />
     </div>
   );
 }
