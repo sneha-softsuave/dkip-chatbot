@@ -4,7 +4,20 @@
 
 :root {
   color-scheme: dark;
-  --band: #4c7a52; /* active classification band colour, set at runtime */
+  /* Design tokens — synced with tailwind.config.js */
+  --color-classification-banner: #103A1E;
+  --color-classification-banner-fg: rgba(255,255,255,0.9);
+  --color-chart-1: #4A7FB5;
+  --color-chart-2: #5E9468;
+  --color-chart-3: #B08A45;
+  --color-chart-4: #B4453D;
+  --color-chart-5: #7C93AF;
+  --color-chart-6: #1F3A66;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --transition-fast: 120ms;
+  --transition-normal: 200ms;
 }
 
 * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
@@ -50,7 +63,15 @@ body {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2
            font-sans font-medium text-sm
-           transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+           transition-colors duration-fast disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn:focus-visible,
+  .btn-primary:focus-visible,
+  .btn-ghost:focus-visible,
+  .btn-secondary:focus-visible {
+    outline: 2px solid var(--tw-ring-color, #4A7FB5);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
   .btn-primary {
     @apply btn bg-accent text-white hover:bg-accent-dim;
@@ -68,7 +89,13 @@ body {
   }
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-line
-           bg-surface-1 px-3 py-1 text-xs text-fg-mid transition-colors;
+           bg-surface-1 px-3 py-1 text-xs text-fg-mid transition-colors duration-fast;
+  }
+  .chip:focus-visible,
+  .chip-active:focus-visible {
+    outline: 2px solid var(--tw-ring-color, #4A7FB5);
+    outline-offset: 2px;
+    border-radius: 9999px;
   }
   .chip-active {
     @apply border-accent/50 bg-accent/15 text-fg-hi;

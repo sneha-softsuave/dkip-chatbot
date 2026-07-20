@@ -33,7 +33,7 @@ export function Audit() {
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Audit Log"
-        sub="Review system activity with tamper-evident integrity verification"
+        sub="Immutable, tamper-evident record of all platform actions"
         action={
           <div className="flex gap-2">
             <button className="btn-ghost" onClick={verifyChain}><Fingerprint className="h-4 w-4" /> Verify integrity</button>

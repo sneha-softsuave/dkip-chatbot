@@ -23,9 +23,21 @@ export default {
         sans: ["Inter", "system-ui", "sans-serif"],
         mono: ["'IBM Plex Mono'", "ui-monospace", "monospace"],
       },
+      borderRadius: {
+        sm: "4px",
+        md: "6px",
+        lg: "8px",
+        xl: "12px",
+      },
       boxShadow: {
         panel: "0 1px 2px 0 rgba(0,0,0,0.3)",
+        card: "0 1px 3px 0 rgba(0,0,0,0.4), 0 1px 2px -1px rgba(0,0,0,0.3)",
         pop: "0 8px 24px -8px rgba(0,0,0,0.5)",
+      },
+      transitionDuration: {
+        fast: "120ms",
+        normal: "200ms",
+        slow: "300ms",
       },
       keyframes: {
         caret: { "0%,100%": { opacity: "1" }, "50%": { opacity: "0" } },

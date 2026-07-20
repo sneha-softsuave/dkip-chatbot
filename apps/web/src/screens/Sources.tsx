@@ -24,7 +24,14 @@ export function Sources() {
   });
   const del = useMutation({
     mutationFn: (id: string) => api.del(`/documents/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["documents"] }),
+    onSuccess: (_data, id) => {
+      // Remove from current filter's cache immediately
+      qc.setQueryData<DocumentMeta[]>(["documents", type], (old) =>
+        old ? old.filter((d) => d.id !== id) : old,
+      );
+      // Also invalidate all other document queries so they refetch
+      qc.invalidateQueries({ queryKey: ["documents"] });
+    },
   });
 
   async function openFile(d: DocumentMeta) {
@@ -51,6 +58,14 @@ export function Sources() {
         <div className="flex justify-center py-16">
           <Spinner className="h-6 w-6" />
         </div>
+      ) : !docs.data || docs.data.length === 0 ? (
+        <Panel className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <FileText className="h-8 w-8 text-fg-low" />
+          <div className="text-sm font-medium text-fg-mid">No documents indexed yet</div>
+          <p className="max-w-xs text-sm text-fg-low">
+            Upload documents through the Ingestion console to populate the library.
+          </p>
+        </Panel>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {(docs.data ?? []).map((d) => (

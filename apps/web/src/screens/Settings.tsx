@@ -1,24 +1,25 @@
-import { Moon, Sun, User } from "lucide-react";
+import { Monitor, Moon, Sun, User } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { PageHeader, Panel } from "../components/ui";
+import { PageHeader, Panel, cx } from "../components/ui";
 import { useAuth } from "../lib/auth";
 
 export function Settings() {
   const { me } = useAuth();
+  const [theme, setTheme] = useState<string>(() => localStorage.getItem("dkip_theme") || "dark");
 
-  function toggleTheme() {
+  function applyTheme(t: string) {
+    setTheme(t);
     const html = document.documentElement;
-    const isDark = html.classList.contains("dark");
-    if (isDark) {
-      html.classList.remove("dark");
+    html.removeAttribute("data-theme");
+    localStorage.setItem("dkip_theme", t);
+    if (t === "light") {
       html.setAttribute("data-theme", "light");
-      localStorage.setItem("dkip_theme", "light");
-    } else {
-      html.classList.add("dark");
-      html.setAttribute("data-theme", "dark");
-      localStorage.setItem("dkip_theme", "dark");
     }
+    // "dark" and "system" — no attribute; dark is default, system defers to OS
   }
+
+  useEffect(() => { applyTheme(theme); }, [theme]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -27,17 +28,27 @@ export function Settings() {
       <Panel className="p-5">
         <h3 className="mb-4 text-sm font-semibold text-fg-hi">Appearance</h3>
         <div className="flex items-center gap-4">
-          <button
-            onClick={toggleTheme}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <Sun className="h-4 w-4" />
-            <Moon className="h-4 w-4" />
-            Toggle Light / Dark Theme
-          </button>
-          <span className="text-xs text-fg-low">
-            Dark tactical is the default. Light theme is available for high-ambient-light environments.
-          </span>
+          <div className="flex gap-1">
+            {(["dark", "light", "system"] as const).map((t) => {
+              const active = theme === t;
+              const Icon = t === "dark" ? Moon : t === "light" ? Sun : Monitor;
+              return (
+                <button
+                  key={t}
+                  onClick={() => applyTheme(t)}
+                  className={cx(
+                    "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm transition-colors duration-fast",
+                    active
+                      ? "bg-accent/15 border border-accent/40 text-fg-hi font-medium"
+                      : "border border-line text-fg-mid hover:text-fg-hi hover:border-line-strong"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </Panel>
 

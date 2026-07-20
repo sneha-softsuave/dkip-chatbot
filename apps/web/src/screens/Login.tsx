@@ -24,7 +24,7 @@ export function Login() {
     try {
       await login(username, password);
     } catch (err) {
-      setError((err as Error).message || "Sign in failed");
+      setError((err as Error).message || "Sign in to DKIP failed");
     } finally {
       setBusy(false);
     }
@@ -44,18 +44,18 @@ export function Login() {
           </div>
           <div className="max-w-lg">
             <h1 className="text-3xl font-semibold leading-tight text-fg-hi">
-              Verified answers from your technical documentation
+              Answers sourced from your documents, not from memory
             </h1>
             <p className="mt-4 text-sm leading-6 text-fg-mid">
-              DKIP retrieves and ranks passages from your organization&apos;s document library and
-              generates answers backed by source citations. If the available documentation does not
-              support a confident answer, the system declines rather than guessing.
+              Every answer is traced to a specific passage in your document corpus. When the available
+              documentation cannot support a confident answer, the system abstains rather than
+              fabricating one — because in defense operations, a wrong answer is costlier than none.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Badge tone="signal">Hybrid search</Badge>
-              <Badge tone="ok">Source-verified answers</Badge>
-              <Badge tone="neutral">Full audit trail</Badge>
-              <Badge tone="neutral">Role-based access control</Badge>
+              <Badge tone="signal">Hybrid vector + keyword search</Badge>
+              <Badge tone="ok">Grounded, cited answers</Badge>
+              <Badge tone="neutral">Immutable audit trail</Badge>
+              <Badge tone="neutral">RBAC + classification enforcement</Badge>
             </div>
           </div>
           <div className="text-xs text-fg-low">DKIP · Proof of Concept 1 · v1.0</div>

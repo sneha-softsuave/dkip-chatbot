@@ -121,7 +121,7 @@ class IngestionFile(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     chunks: Mapped[int] = mapped_column(Integer, default=0)
     ocr: Mapped[bool] = mapped_column(Boolean, default=False)
-    doc_id: Mapped[str | None] = mapped_column(ForeignKey("documents.id"), nullable=True)
+    doc_id: Mapped[str | None] = mapped_column(ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
 
     job: Mapped[IngestionJob] = relationship(back_populates="files")
 

@@ -57,7 +57,7 @@ export function Reports() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title="Reports" sub="Create and export structured reports with source citations" />
+      <PageHeader title="Reports" sub="Generate structured, citable reports from templates" />
 
       {!draft ? (
         <div>

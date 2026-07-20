@@ -17,17 +17,39 @@ import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { StatusLed, cx } from "./ui";
 
-const NAV = [
-  { to: "/ask", label: "Ask", icon: MessagesSquare, role: "any" },
-  { to: "/sources", label: "Documents", icon: FileSearch, role: "any" },
-  { to: "/summarize", label: "Summarize", icon: ScrollText, role: "any" },
-  { to: "/reports", label: "Reports", icon: FileBarChart, role: "any" },
-  { to: "/dashboards", label: "Fleet Readiness", icon: LayoutDashboard, role: "any" },
-  { to: "/ingestion", label: "Ingestion", icon: UploadCloud, role: "admin" },
-  { to: "/audit", label: "Audit Log", icon: ShieldCheck, role: "admin" },
-  { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
-  { to: "/settings", label: "Settings", icon: Gauge, role: "any" },
+const NAV_GENERAL = [
+  { to: "/ask", label: "Ask", icon: MessagesSquare },
+  { to: "/sources", label: "Document Library", icon: FileSearch },
+  { to: "/summarize", label: "Summarize", icon: ScrollText },
+  { to: "/reports", label: "Reports", icon: FileBarChart },
+  { to: "/dashboards", label: "Fleet Readiness", icon: LayoutDashboard },
 ] as const;
+
+const NAV_ADMIN = [
+  { to: "/ingestion", label: "Ingestion", icon: UploadCloud },
+  { to: "/audit", label: "Audit Log", icon: ShieldCheck },
+  { to: "/admin", label: "Admin Console", icon: ShieldCheck },
+  { to: "/settings", label: "Settings", icon: Gauge },
+] as const;
+
+function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: React.ElementType }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cx(
+          "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors duration-fast",
+          isActive
+            ? "border-l-2 border-l-accent bg-surface-2 font-medium text-fg-hi -ml-px"
+            : "border-l-2 border-l-transparent text-fg-mid hover:bg-surface-2/60 hover:text-fg-hi",
+        )
+      }
+    >
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      {label}
+    </NavLink>
+  );
+}
 
 export function Frame({ children }: { children: React.ReactNode }) {
   const { me, logout } = useAuth();
@@ -52,31 +74,26 @@ export function Frame({ children }: { children: React.ReactNode }) {
               <div className="text-[10px] text-fg-low">Defense Knowledge Intelligence</div>
             </div>
           </div>
-          <div className="flex flex-1 flex-col gap-0.5 p-2">
-            {NAV.filter((n) => n.role === "any" || me?.role === "admin").map((n) => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                className={({ isActive }) =>
-                  cx(
-                    "flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm transition-colors",
-                    isActive
-                      ? "border-l-accent bg-surface-2 font-medium text-fg-hi"
-                      : "border-l-transparent text-fg-mid hover:bg-surface-2/60 hover:text-fg-hi",
-                  )
-                }
-              >
-                <n.icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                {n.label}
-              </NavLink>
-            ))}
+          <div className="flex flex-1 flex-col gap-0.5 overflow-auto p-2">
+            <div className="mb-1 px-3 pt-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-fg-low">Navigation</div>
+            {NAV_GENERAL.map((n) => <NavItem key={n.to} {...n} />)}
+            {me?.role === "admin" && (
+              <>
+                <div className="mb-1 mt-3 px-3 pt-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-fg-low">Administration</div>
+                {NAV_ADMIN.map((n) => <NavItem key={n.to} {...n} />)}
+              </>
+            )}
+            {me?.role !== "admin" && (
+              <NavItem to="/settings" label="Settings" icon={Gauge} />
+            )}
           </div>
         </nav>
 
         {/* Main column */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Classification banner — top (§11.1) */}
-          <div className="flex h-7 items-center justify-center bg-[#103A1E] text-[10px] font-semibold uppercase tracking-[0.15em] text-white/90">
+          <div className="flex h-7 shrink-0 items-center justify-center text-[10px] font-semibold uppercase tracking-[0.15em]"
+               style={{ background: "var(--color-classification-banner)", color: "var(--color-classification-banner-fg)" }}>
             {me?.classification_banner || "UNCLASSIFIED // FOR DEMONSTRATION"}
           </div>
           <header className="flex h-14 items-center justify-between border-b border-line bg-surface-1 px-6">
@@ -104,7 +121,8 @@ export function Frame({ children }: { children: React.ReactNode }) {
           <main className="min-h-0 flex-1 overflow-auto p-6">{children}</main>
 
           {/* Classification banner — bottom */}
-          <div className="flex h-6 items-center justify-center border-t border-line bg-[#103A1E] text-[10px] font-semibold uppercase tracking-[0.15em] text-white/90">
+          <div className="flex h-6 shrink-0 items-center justify-center border-t border-line text-[10px] font-semibold uppercase tracking-[0.15em]"
+               style={{ background: "var(--color-classification-banner)", color: "var(--color-classification-banner-fg)" }}>
             {me?.classification_banner || "UNCLASSIFIED // FOR DEMONSTRATION"}
           </div>
           {/* Status strip */}

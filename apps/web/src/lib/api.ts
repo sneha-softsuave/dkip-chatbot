@@ -20,6 +20,7 @@ export class ApiError extends Error {
 }
 
 async function handle(res: Response) {
+  if (res.status === 204) return undefined;
   if (res.ok) {
     const ct = res.headers.get("content-type") || "";
     return ct.includes("application/json") ? res.json() : res;

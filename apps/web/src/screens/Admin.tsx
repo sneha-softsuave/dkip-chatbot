@@ -35,7 +35,7 @@ export function Admin() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title="Admin Console" sub="Manage configuration, users, and system health" />
+      <PageHeader title="Admin Console" sub="Model gateway, user management, and system health" />
 
       <div className="mb-4 flex gap-1">
         {tabs.map((t) => (

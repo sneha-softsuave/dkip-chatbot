@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import hashlib
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from dkip.core.config import settings
 from dkip.db.models import Chunk as ChunkRow
-from dkip.db.models import Document
+from dkip.db.models import Document, IngestionFile
 from dkip.gateway.factory import make_gateway
 from dkip.ingest.chunk import chunk_parsed
 from dkip.ingest.parse import parse
@@ -94,6 +94,12 @@ def ingest_document(db: Session, *, org_id: str, filename: str, data: bytes,
 
 
 def remove_document(db: Session, doc: Document) -> None:
+    # Nullify ingestion-file references to avoid FK constraint violation
+    db.execute(
+        update(IngestionFile)
+        .where(IngestionFile.doc_id == doc.id)
+        .values(doc_id=None)
+    )
     qdrant_store.delete_by_document(doc.id)
     opensearch_store.delete_by_document(doc.id)
     # Clean up the raw file from MinIO (§6.6)

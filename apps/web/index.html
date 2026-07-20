@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>DKIP — Defense Knowledge Intelligence Platform</title>
+    <script>
+      // Apply saved theme before first paint to avoid FOUC
+      (function() {
+        var t = localStorage.getItem("dkip_theme");
+        if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

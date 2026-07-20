@@ -121,7 +121,7 @@ export function Ask() {
                 className="field max-h-40 min-h-[44px] resize-none border-0 bg-transparent focus:ring-0"
                 rows={1}
                 value={question}
-                placeholder="Ask a question about the document library…"
+                placeholder="Ask a question about your documents… (Enter to send, Shift+Enter for newline)"
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -236,8 +236,8 @@ function EmptyState({ onPick }: { onPick: (q: string) => void }) {
     <Panel className="animate-rise p-8">
       <h2 className="text-lg font-semibold text-fg-hi">Ask a question</h2>
       <p className="mt-1 max-w-xl text-sm leading-6 text-fg-mid">
-        Answers are retrieved from your documents, ranked for relevance, and cited to the exact
-        section and page. Try one of these against the demonstration document library:
+        Every answer is grounded in your document corpus — cited to section and page, never fabricated.
+        Try a question against the demonstration document library:
       </p>
       <div className="mt-4 grid gap-2">
         {SUGGESTIONS.map((s) => (

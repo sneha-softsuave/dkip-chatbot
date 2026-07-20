@@ -33,7 +33,7 @@ export function Ingestion() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title="Document Ingestion" sub="Upload and index new documents into the document library" />
+      <PageHeader title="Document Ingestion" sub="Upload, OCR, embed, and index documents into the corpus" />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div>
@@ -88,7 +88,12 @@ export function Ingestion() {
       <div className="mt-6">
         <span className="eyebrow">Recent jobs</span>
         <div className="mt-2 space-y-2">
-          {(jobs.data ?? []).map((j: any) => (
+          {(!jobs.data || jobs.data.length === 0) ? (
+            <div className="flex items-center justify-center py-8 text-sm text-fg-low">
+              No ingestion jobs yet. Upload documents to get started.
+            </div>
+          ) : (
+            jobs.data.map((j: any) => (
             <button key={j.id} onClick={() => setActiveJob(j.id)}
               className="flex w-full items-center justify-between rounded-md border border-line bg-surface-2 px-4 py-2 text-left hover:border-accent/40">
               <div className="flex items-center gap-3">
@@ -100,7 +105,8 @@ export function Ingestion() {
                 {j.summary?.ok ?? 0} ok · {j.summary?.failed ?? 0} failed · {j.summary?.skipped ?? 0} skipped
               </span>
             </button>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

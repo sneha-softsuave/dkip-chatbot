@@ -12,7 +12,7 @@ interface Fleet {
   by_unit: { unit: string; serviceable: number; total: number }[];
 }
 
-const AXIS = { stroke: "#7C93AF", fontSize: 11, fontFamily: "IBM Plex Mono" };
+const AXIS = { stroke: "var(--color-chart-5)", fontSize: 11, fontFamily: "IBM Plex Mono" };
 
 export function Dashboards() {
   const fleet = useQuery<Fleet>({ queryKey: ["fleet"], queryFn: () => api.get("/dashboards/fleet") });
@@ -54,7 +54,7 @@ export function Dashboards() {
             <PieChart>
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
                    label={({ name, value }) => `${name}: ${value}`}
-                   labelLine={{ stroke: "#7C93AF", strokeWidth: 1 }}>
+                   labelLine={{ stroke: "var(--color-chart-5)", strokeWidth: 1 }}>
                 {pieData.map((d, i) => <Cell key={i} fill={d.fill} />)}
               </Pie>
               <Tooltip contentStyle={{ background: "#0D275C", border: "1px solid #2E4F85", borderRadius: 6, fontSize: 12 }} />
