@@ -27,7 +27,7 @@ def ensure_collection() -> None:
             vectors_config=qm.VectorParams(size=settings.embed_dim,
                                            distance=qm.Distance.COSINE))
         for field in ("collection_id", "doc_type", "unit", "classification",
-                      "clearance_required", "superseded"):
+                      "clearance_required", "superseded", "access_tags", "effective_date"):
             client().create_payload_index(name, field,
                                           field_schema=qm.PayloadSchemaType.KEYWORD
                                           if field != "clearance_required"
@@ -43,7 +43,16 @@ def upsert(points: list[dict]) -> None:
                 for p in points])
 
 
-def _filter(scope: dict, clearance: int) -> qm.Filter:
+def delete_points(point_ids: list[str]) -> None:
+    """Delete specific points by ID (used during update/re-index)."""
+    if not point_ids:
+        return
+    client().delete(collection_name=settings.qdrant_collection,
+                    points_selector=qm.PointIdsSelector(
+                        points=point_ids))
+
+
+def _filter(scope: dict, clearance: int, access_tags: list[str] | None = None) -> qm.Filter:
     must: list = [qm.FieldCondition(key="clearance_required",
                                     range=qm.Range(lte=clearance))]
     if scope.get("collections"):
@@ -54,13 +63,23 @@ def _filter(scope: dict, clearance: int) -> qm.Filter:
                     match=qm.MatchAny(any=scope["doc_types"])))
     if scope.get("unit"):
         must.append(qm.FieldCondition(key="unit", match=qm.MatchValue(value=scope["unit"])))
+    if access_tags:
+        must.append(qm.FieldCondition(key="access_tags",
+                    match=qm.MatchAny(any=access_tags)))
+    if scope.get("date_from"):
+        must.append(qm.FieldCondition(key="effective_date",
+                    range=qm.Range(gte=scope["date_from"])))
+    if scope.get("date_to"):
+        must.append(qm.FieldCondition(key="effective_date",
+                    range=qm.Range(lte=scope["date_to"])))
     return qm.Filter(must=must)
 
 
-def search(vector: list[float], scope: dict, clearance: int, limit: int) -> list[dict]:
+def search(vector: list[float], scope: dict, clearance: int, limit: int,
+          access_tags: list[str] | None = None) -> list[dict]:
     res = client().search(collection_name=settings.qdrant_collection,
                           query_vector=vector, limit=limit,
-                          query_filter=_filter(scope, clearance),
+                          query_filter=_filter(scope, clearance, access_tags),
                           with_payload=True)
     return [{"chunk_id": str(r.id), "score": r.score, "payload": r.payload}
             for r in res]

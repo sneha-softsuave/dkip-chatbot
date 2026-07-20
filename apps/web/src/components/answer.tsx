@@ -31,17 +31,21 @@ export function ConfidenceGauge({ value }: { value: number }) {
   );
 }
 
-/** Renders answer text, converting [Sn] markers into clickable citation chips. */
+/** Renders answer text, converting [Sn] markers into clickable citation chips
+ * with passage preview on hover (§11.4). */
 export function AnswerBody({
   marked,
   citations,
+  evidence,
   onOpen,
 }: {
   marked: string;
   citations: Citation[];
+  evidence: Evidence[];
   onOpen: (c: Citation) => void;
 }) {
   const byId = new Map(citations.map((c) => [c.sid, c]));
+  const evById = new Map(evidence.map((e) => [e.sid, e]));
   const parts = marked.split(/(\[S\d+\])/g);
   return (
     <p className="text-[15px] leading-7 text-fg-hi">
@@ -49,15 +53,26 @@ export function AnswerBody({
         const m = part.match(/^\[S(\d+)\]$/);
         if (m) {
           const c = byId.get(Number(m[1]));
+          const ev = evById.get(Number(m[1]));
           return (
-            <button
-              key={i}
-              onClick={() => c && onOpen(c)}
-              className="mx-0.5 -translate-y-px rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-[11px] text-accent align-middle hover:bg-accent/20"
-              title={c ? `${c.doc} §${c.section} p.${c.page}` : part}
-            >
-              {m[1]}
-            </button>
+            <span key={i} className="group relative inline">
+              <button
+                onClick={() => c && onOpen(c)}
+                className="mx-0.5 -translate-y-px rounded-full border border-accent/40 bg-accent/10 px-1.5 py-0.5 font-mono text-[11px] text-accent align-middle hover:bg-accent/20"
+                title={c ? `${c.doc} §${c.section} p.${c.page}` : part}
+              >
+                {m[1]}
+              </button>
+              {ev && (
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-normal rounded-md border border-line bg-surface-1 p-2.5 text-xs leading-5 text-fg-mid shadow-lg opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{ maxWidth: "320px" }}>
+                  <span className="mb-1 block font-mono text-[10px] text-accent">
+                    {ev.doc_code} §{ev.section || "-"} p.{ev.page_start}
+                  </span>
+                  {ev.text.slice(0, 200)}{ev.text.length > 200 ? "…" : ""}
+                </span>
+              )}
+            </span>
           );
         }
         return <span key={i}>{part}</span>;

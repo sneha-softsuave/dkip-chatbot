@@ -7,6 +7,8 @@ export interface Citation {
   chunk_id: string;
   superseded: boolean;
   revision: string;
+  char_start: number;
+  char_end: number;
 }
 
 export interface Evidence {

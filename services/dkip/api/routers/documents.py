@@ -54,10 +54,20 @@ async def upload(request: Request, files: list[UploadFile] = File(...),
 @router.get("/documents")
 def list_documents(user: Principal = Depends(current_user),
                    db: Session = Depends(get_db), collection: str | None = None,
-                   doc_type: str | None = None):
+                   doc_type: str | None = None, unit: str | None = None,
+                   classification: str | None = None,
+                   date_from: str | None = None, date_to: str | None = None):
     q = select(Document).where(Document.clearance_required <= user.clearance)
     if doc_type:
         q = q.where(Document.doc_type == doc_type)
+    if unit:
+        q = q.where(Document.unit == unit)
+    if classification:
+        q = q.where(Document.classification == classification)
+    if date_from:
+        q = q.where(Document.effective_date >= date_from)
+    if date_to:
+        q = q.where(Document.effective_date <= date_to)
     docs = db.execute(q.order_by(Document.created_at.desc())).scalars().all()
     if collection:
         coll = db.execute(select(Collection).where(Collection.slug == collection)
@@ -66,6 +76,7 @@ def list_documents(user: Principal = Depends(current_user),
     return [{"id": d.id, "doc_code": d.doc_code, "title": d.title,
              "doc_type": d.doc_type, "revision": d.revision,
              "classification": d.classification, "unit": d.unit,
+             "effective_date": d.effective_date,
              "page_count": d.page_count, "status": d.status,
              "created_at": d.created_at.isoformat()} for d in docs]
 

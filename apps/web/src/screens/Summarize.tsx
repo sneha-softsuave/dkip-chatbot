@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Loader2, Sparkles } from "lucide-react";
+import { Copy, Download, FileText, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { SourceViewer, type SourceTarget } from "../components/SourceViewer";
@@ -14,24 +14,46 @@ export function Summarize() {
   const [mode, setMode] = useState<"document" | "topic">("document");
   const [docId, setDocId] = useState("");
   const [topic, setTopic] = useState("");
+  const [scopeUnit, setScopeUnit] = useState("");
   const [format, setFormat] = useState<(typeof FORMATS)[number]>("executive");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ summary_marked: string; citations: Citation[]; coverage: number; provider: string } | null>(null);
+  const [result, setResult] = useState<{ summary_marked: string; summary: string; citations: Citation[]; coverage: number; provider: string } | null>(null);
   const [error, setError] = useState("");
   const [target, setTarget] = useState<SourceTarget | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function run() {
     setBusy(true);
     setError("");
     setResult(null);
     try {
-      const body = mode === "document" ? { doc_id: docId, format } : { topic, format };
+      const scope: any = {};
+      if (scopeUnit) scope.unit = scopeUnit;
+      const body = mode === "document" ? { doc_id: docId, format, scope } : { topic, format, scope };
       setResult(await api.post("/summarize", body));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function copyToClipboard() {
+    if (!result?.summary) return;
+    await navigator.clipboard.writeText(result.summary);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function exportText() {
+    if (!result?.summary) return;
+    const blob = new Blob([result.summary], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `summary-${mode}-${format}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   const canRun = mode === "document" ? !!docId : topic.trim().length > 2;
@@ -71,6 +93,12 @@ export function Summarize() {
             )}
 
             <div className="mt-4">
+              <label className="mb-1 block text-xs font-medium text-fg-mid">Scope unit (optional)</label>
+              <input className="field" value={scopeUnit} placeholder="e.g. 12 Corps"
+                onChange={(e) => setScopeUnit(e.target.value)} />
+            </div>
+
+            <div className="mt-4">
               <label className="mb-1 block text-xs font-medium text-fg-mid">Format</label>
               <div className="flex flex-wrap gap-2">
                 {FORMATS.map((f) => (
@@ -100,7 +128,15 @@ export function Summarize() {
               <>
                 <div className="mb-4 flex items-center justify-between">
                   <span className="eyebrow">Summary · {format}</span>
-                  <Badge tone="ok">coverage {Math.round(result.coverage * 100)}%</Badge>
+                  <div className="flex items-center gap-2">
+                    <button onClick={copyToClipboard} className="btn-ghost !px-2 !py-1 text-xs" title="Copy to clipboard">
+                      <Copy className="mr-1 inline h-3 w-3" /> {copied ? "Copied!" : "Copy"}
+                    </button>
+                    <button onClick={exportText} className="btn-ghost !px-2 !py-1 text-xs" title="Download as text">
+                      <Download className="mr-1 inline h-3 w-3" /> Export
+                    </button>
+                    <Badge tone="ok">coverage {Math.round(result.coverage * 100)}%</Badge>
+                  </div>
                 </div>
                 <SummaryText marked={result.summary_marked} citations={result.citations} onOpen={(c) => setTarget({ chunkId: c.chunk_id })} />
                 <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">

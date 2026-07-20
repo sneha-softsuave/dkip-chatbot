@@ -211,3 +211,29 @@ class StructuredTable(Base):
     physical_table: Mapped[str] = mapped_column(String)
     source: Mapped[str] = mapped_column(String, default="upload")
     schema_catalog: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Connector(Base):
+    """API/DB connector configuration (§6.5, §8.1)."""
+    __tablename__ = "connectors"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    kind: Mapped[str] = mapped_column(String)  # api | db
+    name: Mapped[str] = mapped_column(String, default="")
+    config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    secret_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    schedule_cron: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Dashboard(Base):
+    """Dashboard definitions (§8.1, §11.3.5)."""
+    __tablename__ = "dashboards"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    name: Mapped[str] = mapped_column(String)
+    definition_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

@@ -32,10 +32,14 @@ class OpenAIGateway:
             model=self.gen_model, messages=self._messages(prompt, system),
             max_tokens=max_tokens, temperature=temperature, stop=stop)
         u = r.usage
+        pt = u.prompt_tokens if u else 0
+        ct = u.completion_tokens if u else 0
+        # Approximate cost for gpt-4o-mini: $0.15/1M prompt, $0.60/1M completion
+        cost = (pt * 0.15 + ct * 0.60) / 1_000_000
         return Completion(text=r.choices[0].message.content or "",
-                          prompt_tokens=u.prompt_tokens if u else 0,
-                          completion_tokens=u.completion_tokens if u else 0,
-                          model=self.gen_model, provider=self.provider)
+                          prompt_tokens=pt, completion_tokens=ct,
+                          model=self.gen_model, provider=self.provider,
+                          cost_usd=round(cost, 6))
 
     def generate_stream(self, prompt, *, system=None, max_tokens=1024,
                         temperature=0.0, stop=None) -> Iterator[str]:

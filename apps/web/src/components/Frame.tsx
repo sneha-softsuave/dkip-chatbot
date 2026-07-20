@@ -25,6 +25,8 @@ const NAV = [
   { to: "/dashboards", label: "Fleet Readiness", icon: LayoutDashboard, role: "any" },
   { to: "/ingestion", label: "Ingestion", icon: UploadCloud, role: "admin" },
   { to: "/audit", label: "Audit Log", icon: ShieldCheck, role: "admin" },
+  { to: "/admin", label: "Admin", icon: ShieldCheck, role: "admin" },
+  { to: "/settings", label: "Settings", icon: Gauge, role: "any" },
 ] as const;
 
 export function Frame({ children }: { children: React.ReactNode }) {
@@ -73,6 +75,10 @@ export function Frame({ children }: { children: React.ReactNode }) {
 
         {/* Main column */}
         <div className="flex min-w-0 flex-1 flex-col">
+          {/* Classification banner — top (§11.1) */}
+          <div className="flex h-7 items-center justify-center bg-[#103A1E] text-[10px] font-semibold uppercase tracking-[0.15em] text-white/90">
+            {me?.classification_banner || "UNCLASSIFIED // FOR DEMONSTRATION"}
+          </div>
           <header className="flex h-14 items-center justify-between border-b border-line bg-surface-1 px-6">
             <div className="flex items-center gap-2">
               <StatusLed tone={provider ? "ok" : "idle"} />
@@ -97,6 +103,10 @@ export function Frame({ children }: { children: React.ReactNode }) {
 
           <main className="min-h-0 flex-1 overflow-auto p-6">{children}</main>
 
+          {/* Classification banner — bottom */}
+          <div className="flex h-6 items-center justify-center border-t border-line bg-[#103A1E] text-[10px] font-semibold uppercase tracking-[0.15em] text-white/90">
+            {me?.classification_banner || "UNCLASSIFIED // FOR DEMONSTRATION"}
+          </div>
           {/* Status strip */}
           <footer className="flex h-8 items-center justify-between border-t border-line bg-surface-1 px-6 text-fg-low">
             <div className="flex items-center gap-4">

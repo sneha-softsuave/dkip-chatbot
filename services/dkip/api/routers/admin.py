@@ -23,6 +23,13 @@ class UserIn(BaseModel):
     clearance: int = 1
 
 
+class UserPatch(BaseModel):
+    display_name: str | None = None
+    role: str | None = None
+    clearance: int | None = None
+    disabled: bool | None = None
+
+
 @router.get("/users")
 def list_users(user: Principal = Depends(require_role("admin")),
                db: Session = Depends(get_db)):
@@ -45,3 +52,26 @@ def create_user(body: UserIn, user: Principal = Depends(require_role("admin")),
                  actor_name=user.name, org_id=user.org_id, target_type="user",
                  target_id=body.username)
     return {"subject": u.subject, "role": u.role, "clearance": u.clearance_level}
+
+
+@router.patch("/users/{username}")
+def update_user(username: str, body: UserPatch, user: Principal = Depends(require_role("admin")),
+                db: Session = Depends(get_db)):
+    u = db.execute(select(User).where(User.subject == username)).scalar_one_or_none()
+    if not u:
+        raise HTTPException(404, "user not found")
+    if body.display_name:
+        u.display_name = body.display_name
+    if body.role:
+        u.role = body.role
+    if body.clearance is not None:
+        u.clearance_level = body.clearance
+    if body.disabled is not None:
+        from datetime import datetime, timezone
+        u.disabled_at = datetime.now(timezone.utc) if body.disabled else None
+    db.commit()
+    audit.record(db, action="user_update", actor_user_id=user.user_id,
+                 actor_name=user.name, org_id=user.org_id, target_type="user",
+                 target_id=username)
+    return {"subject": u.subject, "role": u.role, "clearance": u.clearance_level,
+            "disabled": bool(u.disabled_at)}

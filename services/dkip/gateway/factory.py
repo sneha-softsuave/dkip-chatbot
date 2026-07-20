@@ -1,10 +1,25 @@
 """Provider selected by config only — no application code changes (§7, §18)."""
 from __future__ import annotations
 
+import time
 from functools import lru_cache
 
 from dkip.core.config import settings
 from dkip.gateway.base import ModelGateway
+
+
+def _retry_call(fn, *args, max_retries=3, base_delay=1.0, **kwargs):
+    """Simple exponential-backoff retry for gateway calls (§7.4)."""
+    last_exc = None
+    for attempt in range(max_retries + 1):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            last_exc = e
+            if attempt < max_retries:
+                delay = base_delay * (2 ** attempt)
+                time.sleep(delay)
+    raise last_exc
 
 
 @lru_cache

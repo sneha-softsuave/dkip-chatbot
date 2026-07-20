@@ -58,6 +58,9 @@ body {
   .btn-ghost {
     @apply btn border border-line text-fg-mid hover:text-fg-hi hover:border-line-strong hover:bg-surface-3;
   }
+  .btn-secondary {
+    @apply btn border border-line bg-surface-1 text-fg-mid hover:text-fg-hi hover:border-line-strong hover:bg-surface-2;
+  }
   .field {
     @apply w-full rounded-md border border-line bg-surface-1 px-3 py-2 text-sm
            text-fg-hi placeholder:text-fg-low focus:border-accent/70
@@ -78,4 +81,36 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Light theme (§11.1 — optional) */
+[data-theme="light"] {
+  color-scheme: light;
+  --tw-bg: #F4F6F8;
+  --tw-fg-hi: #0B1E3D;
+  --tw-fg-mid: #344E6C;
+  --tw-fg-low: #5C7396;
+  --tw-surface-1: #FFFFFF;
+  --tw-surface-2: #F0F2F5;
+  --tw-surface-3: #E6E9EE;
+  --tw-line: #D1D7E0;
+  --tw-line-strong: #B0BAC8;
+  --tw-accent: #2563A0;
+  --tw-accent-dim: #1D4E7E;
+  --tw-ok: #2E7D4F;
+  --tw-caution: #B8860B;
+  --tw-critical: #C53030;
+}
+[data-theme="light"] body {
+  @apply bg-[#F4F6F8] text-[#0B1E3D];
+}
+[data-theme="light"] ::selection {
+  background: rgba(37, 99, 160, 0.2);
+  color: #0B1E3D;
+}
+[data-theme="light"] *::-webkit-scrollbar-thumb {
+  background: #B0BAC8;
+}
+[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background: #8D9BAE;
 }

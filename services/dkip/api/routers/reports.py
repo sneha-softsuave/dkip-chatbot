@@ -31,11 +31,33 @@ class PatchIn(BaseModel):
     draft: dict
 
 
+class TemplateIn(BaseModel):
+    name: str
+    description: str = ""
+    fields: list = []
+
+
 @router.get("/report-templates")
 def templates(user: Principal = Depends(current_user), db: Session = Depends(get_db)):
     rows = db.execute(select(ReportTemplate)).scalars().all()
     return [{"id": t.id, "name": t.name, "description": t.description,
              "fields": t.fields} for t in rows]
+
+
+@router.post("/report-templates", status_code=201)
+def create_template(body: TemplateIn,
+                    user: Principal = Depends(require_role("admin")),
+                    db: Session = Depends(get_db)):
+    tpl = ReportTemplate(org_id=user.org_id, name=body.name,
+                         description=body.description, fields=body.fields)
+    db.add(tpl)
+    db.flush()
+    audit.record(db, action="template_create", actor_user_id=user.user_id,
+                 actor_name=user.name, org_id=user.org_id,
+                 target_type="report_template", target_id=tpl.id)
+    db.commit()
+    return {"id": tpl.id, "name": tpl.name, "description": tpl.description,
+            "fields": tpl.fields}
 
 
 @router.post("/reports")

@@ -137,8 +137,33 @@ def parse_html(data: bytes) -> Parsed:
     return parse_text(text.encode())
 
 
+def parse_xlsx(data: bytes) -> Parsed:
+    """Parse XLSX into tabular text blocks, one per sheet (§6.3)."""
+    import io
+
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(data), data_only=True)
+    parsed = Parsed(page_count=len(wb.sheetnames))
+    for idx, name in enumerate(wb.sheetnames, start=1):
+        ws = wb[name]
+        rows: list[str] = []
+        for row in ws.iter_rows(values_only=True):
+            cells = [str(c) if c is not None else "" for c in row]
+            if any(cells):
+                rows.append(" | ".join(cells))
+        if rows:
+            parsed.blocks.append(Block(
+                text="\n".join(rows),
+                section=f"Sheet: {name}",
+                page_start=idx, page_end=idx))
+    wb.close()
+    return parsed
+
+
 _DISPATCH = {
     ".pdf": parse_pdf, ".docx": parse_docx, ".pptx": parse_pptx,
+    ".xlsx": parse_xlsx, ".xls": parse_xlsx,
     ".txt": parse_text, ".md": parse_text, ".html": parse_html, ".htm": parse_html,
 }
 

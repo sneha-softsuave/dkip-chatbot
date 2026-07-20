@@ -3,12 +3,14 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Frame } from "./components/Frame";
 import { Spinner } from "./components/ui";
 import { useAuth } from "./lib/auth";
+import { Admin } from "./screens/Admin";
 import { Ask } from "./screens/Ask";
 import { Audit } from "./screens/Audit";
 import { Dashboards } from "./screens/Dashboards";
 import { Ingestion } from "./screens/Ingestion";
 import { Login } from "./screens/Login";
 import { Reports } from "./screens/Reports";
+import { Settings } from "./screens/Settings";
 import { Sources } from "./screens/Sources";
 import { Summarize } from "./screens/Summarize";
 
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/dashboards" element={<Dashboards />} />
         <Route path="/ingestion" element={admin ? <Ingestion /> : <Navigate to="/ask" />} />
         <Route path="/audit" element={admin ? <Audit /> : <Navigate to="/ask" />} />
+        <Route path="/admin" element={admin ? <Admin /> : <Navigate to="/ask" />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/ask" />} />
       </Routes>
     </Frame>

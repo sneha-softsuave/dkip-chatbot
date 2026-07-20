@@ -30,8 +30,10 @@ class Evidence:
     section: str
     page_start: int
     page_end: int
-    text: str
-    score: float
+    char_start: int = 0
+    char_end: int = 0
+    text: str = ""
+    score: float = 0.0
     superseded: bool = False
     revision: str = "A"
 

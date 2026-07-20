@@ -57,6 +57,15 @@ export const api = {
       }),
     );
   },
+  async put(path: string, body?: unknown) {
+    return handle(
+      await fetch(`${BASE}${path}`, {
+        method: "PUT",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: body ? JSON.stringify(body) : undefined,
+      }),
+    );
+  },
   async del(path: string) {
     return handle(await fetch(`${BASE}${path}`, { method: "DELETE", headers: authHeaders() }));
   },

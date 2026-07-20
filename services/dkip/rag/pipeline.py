@@ -66,8 +66,9 @@ def run_query(db: Session, *, question: str, scope: dict, user: Principal,
     qr = rewrite(gateway, db, question, session_id)
 
     qvec = gateway.embed([qr])[0]
-    dense = qdrant_store.search(qvec, scope, user.clearance, settings.RETRIEVE_LIMIT)
-    lexical = opensearch_store.search(qr, scope, user.clearance, settings.RETRIEVE_LIMIT)
+    at = list(user.access_tags) if user.access_tags else None
+    dense = qdrant_store.search(qvec, scope, user.clearance, settings.RETRIEVE_LIMIT, access_tags=at)
+    lexical = opensearch_store.search(qr, scope, user.clearance, settings.RETRIEVE_LIMIT, access_tags=at)
     fused = rrf(dense, lexical, settings.RRF_K, settings.RRF_KEEP)
 
     cands, texts = _load_evidence(db, fused)
@@ -78,8 +79,10 @@ def run_query(db: Session, *, question: str, scope: dict, user: Principal,
     ranked = sorted(zip(cands, scores), key=lambda x: x[1], reverse=True)
     rerank_top = max(scores) if scores else 0.0
     top = ranked[:settings.RERANK_TOP_K]
-    # de-rank superseded evidence (4.2.1): keep but push down
-    top.sort(key=lambda x: (x[0]["chunk"].superseded, -x[1]))
+    # de-rank superseded evidence (4.2.1) and low-OCR-confidence chunks (§6.4):
+    # push superseded and low-ocr-confidence entries down but keep them available
+    top.sort(key=lambda x: (x[0]["chunk"].superseded,
+                            -x[1] if (x[0]["chunk"].ocr_confidence or 1.0) >= 0.5 else -x[1] - 0.5))
 
     evidence: list[Evidence] = []
     for i, (cand, score) in enumerate(top, start=1):
@@ -87,7 +90,8 @@ def run_query(db: Session, *, question: str, scope: dict, user: Principal,
         evidence.append(Evidence(
             sid=i, chunk_id=c.id, doc_code=d.doc_code if d else "",
             title=d.title if d else "", section=c.section,
-            page_start=c.page_start, page_end=c.page_end, text=c.text,
+            page_start=c.page_start, page_end=c.page_end,
+            char_start=c.char_start, char_end=c.char_end, text=c.text,
             score=round(float(score), 4), superseded=c.superseded,
             revision=c.revision))
 

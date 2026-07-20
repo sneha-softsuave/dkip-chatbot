@@ -22,11 +22,15 @@ export function Reports() {
   const templates = useQuery({ queryKey: ["templates"], queryFn: () => api.get("/report-templates") });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [topic, setTopic] = useState("fleet inspection and serviceability");
+  const [scopeUnit, setScopeUnit] = useState("");
 
   async function generate(templateId: string) {
     setBusy(true);
     try {
-      setDraft(await api.post("/reports", { template_id: templateId }));
+      const scope: any = {};
+      if (scopeUnit) scope.unit = scopeUnit;
+      setDraft(await api.post("/reports", { template_id: templateId, topic, scope }));
     } finally {
       setBusy(false);
     }
@@ -56,7 +60,18 @@ export function Reports() {
       <PageHeader title="Reports" sub="Create and export structured reports with source citations" />
 
       {!draft ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <div className="mb-4 flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1 block text-xs font-medium text-fg-mid">Topic / focus area</label>
+              <input className="field" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. fleet inspection and serviceability" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-fg-mid">Scope unit</label>
+              <input className="field w-40" value={scopeUnit} onChange={(e) => setScopeUnit(e.target.value)} placeholder="optional" />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
           {(templates.data ?? []).map((t: { id: string; name: string; description: string; fields: unknown[] }) => (
             <Panel key={t.id} className="flex flex-col p-5">
               <FileText className="h-5 w-5 text-accent" />
@@ -68,8 +83,9 @@ export function Reports() {
               </button>
             </Panel>
           ))}
-        </div>
-      ) : (
+          </div>
+          </div>
+        ) : (
         <div>
           <div className="mb-4 flex items-center justify-between">
             <div>

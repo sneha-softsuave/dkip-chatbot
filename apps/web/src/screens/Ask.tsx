@@ -188,7 +188,7 @@ function TurnView({ turn, onOpen }: { turn: Turn; onOpen: (c: Citation) => void 
                 <ConfidenceGauge value={r.confidence} />
               </div>
             </div>
-            <AnswerBody marked={r.answer_marked || r.answer || ""} citations={r.citations} onOpen={onOpen} />
+            <AnswerBody marked={r.answer_marked || r.answer || ""} citations={r.citations} evidence={r.evidence} onOpen={onOpen} />
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
               {r.citations.map((c) => (
                 <button key={c.chunk_id} onClick={() => onOpen(c)}

@@ -31,6 +31,12 @@ def put_bytes(bucket: str, key: str, data: bytes, content_type: str) -> str:
     return f"{bucket}/{key}"
 
 
+def delete_by_object_key(object_key: str) -> None:
+    """Remove an object from MinIO by its full object key (bucket/key)."""
+    bucket, key = object_key.split("/", 1)
+    client().remove_object(bucket, key)
+
+
 def get_bytes(bucket: str, key: str) -> bytes:
     resp = client().get_object(bucket, key)
     try:

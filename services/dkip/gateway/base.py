@@ -17,6 +17,7 @@ class Completion:
     model: str = ""
     provider: str = ""
     meta: dict = field(default_factory=dict)
+    cost_usd: float = 0.0
 
 
 @runtime_checkable

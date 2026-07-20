@@ -38,7 +38,8 @@ def bind_citations(answer: str, evidence: list[Evidence]) -> list[dict]:
         out.append({"sid": sid, "doc": e.doc_code, "title": e.title,
                     "section": e.section, "page": e.page_start,
                     "chunk_id": e.chunk_id, "superseded": e.superseded,
-                    "revision": e.revision})
+                    "revision": e.revision,
+                    "char_start": e.char_start, "char_end": e.char_end})
     return out
 
 

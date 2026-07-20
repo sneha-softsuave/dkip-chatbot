@@ -75,3 +75,83 @@ class SummarizeIn(BaseModel):
     topic: str | None = None
     scope: Scope = Field(default_factory=Scope)
     format: str = "brief"
+
+
+# ---- Admin / Org schemas ---------------------------------------------------
+
+class OrgIn(BaseModel):
+    name: str
+
+
+class CollectionIn(BaseModel):
+    slug: str
+    name: str
+    description: str = ""
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    display_name: str = ""
+    role: str = "user"
+    clearance: int = 1
+
+
+class UserPatch(BaseModel):
+    display_name: str | None = None
+    role: str | None = None
+    clearance: int | None = None
+    disabled: bool | None = None
+
+
+# ---- Report schemas --------------------------------------------------------
+
+class ReportTemplateIn(BaseModel):
+    name: str
+    description: str = ""
+    fields: list = []
+
+
+class ReportField(BaseModel):
+    label: str
+    value: str = ""
+    query: str = ""
+    source: str = ""  # "retrieval" or "structured"
+
+
+class GenerateIn(BaseModel):
+    template_id: str
+    title: str = ""
+    topic: str = ""
+    scope: Scope = Field(default_factory=Scope)
+
+
+class PatchIn(BaseModel):
+    draft: dict
+
+
+# ---- Dashboard schemas -----------------------------------------------------
+
+class DashboardIn(BaseModel):
+    name: str
+    definition_json: dict = {}
+
+
+class DashboardDataIn(BaseModel):
+    filters: dict = {}
+
+
+# ---- Connector schemas -----------------------------------------------------
+
+class ConnectorIn(BaseModel):
+    kind: str  # api | db
+    name: str = ""
+    config_json: dict = {}
+    secret_ref: str | None = None
+    schedule_cron: str | None = None
+
+
+# ---- Config schemas ---------------------------------------------------------
+
+class ProviderIn(BaseModel):
+    provider: str  # cloud | local | fake

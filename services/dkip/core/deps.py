@@ -16,6 +16,7 @@ class Principal:
     name: str
     org_id: str
     user_id: str | None = None
+    access_tags: list[str] = ()
 
 
 def current_user(request: Request) -> Principal:
@@ -29,7 +30,8 @@ def current_user(request: Request) -> Principal:
     return Principal(subject=claims["sub"], role=claims.get("role", "user"),
                      clearance=int(claims.get("clearance", 1)),
                      name=claims.get("name", ""), org_id=claims.get("org_id", ""),
-                     user_id=claims.get("uid"))
+                     user_id=claims.get("uid"),
+                     access_tags=claims.get("access_tags", []))
 
 
 def require_role(*roles: str):

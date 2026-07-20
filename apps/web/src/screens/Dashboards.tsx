@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Database, Loader2, Search } from "lucide-react";
 import { useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { PageHeader, Panel } from "../components/ui";
+import { PageHeader, Panel, cx } from "../components/ui";
 import { api } from "../lib/api";
 
 interface Fleet {
@@ -16,8 +16,19 @@ const AXIS = { stroke: "#7C93AF", fontSize: 11, fontFamily: "IBM Plex Mono" };
 
 export function Dashboards() {
   const fleet = useQuery<Fleet>({ queryKey: ["fleet"], queryFn: () => api.get("/dashboards/fleet") });
+  const [filterUnit, setFilterUnit] = useState<string | null>(null);
   const k = fleet.data?.kpi ?? {};
   const readiness = k.t ? Math.round(((k.s ?? 0) / k.t) * 100) : 0;
+
+  const byEquip = (fleet.data?.by_equipment ?? []).filter(
+    (e) => !filterUnit || fleet.data?.by_unit.find((u: any) => u.unit === filterUnit)
+  );
+
+  const pieData = [
+    { name: "Serviceable", value: k.s ?? 0, fill: "#5E9468" },
+    { name: "Unserviceable", value: k.u ?? 0, fill: "#C53030" },
+    { name: "Awaiting Spares", value: k.a ?? 0, fill: "#D4A017" },
+  ].filter((d) => d.value > 0);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -31,8 +42,38 @@ export function Dashboards() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Chart title="Serviceable vs. total — by equipment" data={fleet.data?.by_equipment ?? []} nameKey="equipment" />
-        <Chart title="Serviceable vs. total — by unit" data={fleet.data?.by_unit ?? []} nameKey="unit" />
+        <Chart title="Serviceable vs. total — by equipment" data={byEquip} nameKey="equipment" />
+        <Chart title="Serviceable vs. total — by unit" data={fleet.data?.by_unit ?? []} nameKey="unit" onBarClick={setFilterUnit} selected={filterUnit} />
+      </div>
+
+      {/* Pie chart + trend */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <Panel className="p-4">
+          <div className="eyebrow mb-3">Fleet composition</div>
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90}
+                   label={({ name, value }) => `${name}: ${value}`}
+                   labelLine={{ stroke: "#7C93AF", strokeWidth: 1 }}>
+                {pieData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+              </Pie>
+              <Tooltip contentStyle={{ background: "#0D275C", border: "1px solid #2E4F85", borderRadius: 6, fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Panel>
+        <Panel className="p-4">
+          <div className="eyebrow mb-3">Readiness trend — by equipment</div>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={byEquip}>
+              <CartesianGrid strokeDasharray="2 4" stroke="#1F3A66" vertical={false} />
+              <XAxis dataKey="equipment" tick={AXIS} axisLine={{ stroke: "#1F3A66" }} tickLine={false} />
+              <YAxis tick={AXIS} axisLine={false} tickLine={false} width={28} />
+              <Tooltip contentStyle={{ background: "#0D275C", border: "1px solid #2E4F85", borderRadius: 6, fontSize: 12 }} />
+              <Line type="monotone" dataKey="serviceable" stroke="#5E9468" strokeWidth={2} dot={{ fill: "#5E9468", r: 3 }} />
+              <Line type="monotone" dataKey="total" stroke="#4A7FB5" strokeWidth={2} dot={{ fill: "#4A7FB5", r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Panel>
       </div>
 
       <StructuredQuery />
@@ -52,24 +93,28 @@ function Kpi({ label, value, suffix, tone }: { label: string; value?: number; su
   );
 }
 
-function Chart({ title, data, nameKey }: { title: string; data: any[]; nameKey: string }) {
+function Chart({ title, data, nameKey, onBarClick, selected }: { title: string; data: any[]; nameKey: string; onBarClick?: (v: string | null) => void; selected?: string | null }) {
   return (
     <Panel className="p-4">
-      <div className="eyebrow mb-3">{title}</div>
+      <div className="eyebrow mb-3">{title}{selected && <span className="ml-2 text-accent">filtered: {selected}</span>}</div>
+      {selected && (
+        <button className="mb-2 text-[11px] text-accent hover:underline" onClick={() => onBarClick?.(null)}>Clear filter</button>
+      )}
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} barGap={2}>
           <CartesianGrid strokeDasharray="2 4" stroke="#1F3A66" vertical={false} />
-          <XAxis dataKey={nameKey} tick={AXIS} axisLine={{ stroke: "#1F3A66" }} tickLine={false} />
+          <XAxis dataKey={nameKey} tick={AXIS} axisLine={{ stroke: "#1F3A66" }} tickLine={false}
+                 onClick={(e: any) => onBarClick?.(e?.value)} cursor={onBarClick ? "pointer" : undefined} />
           <YAxis tick={AXIS} axisLine={false} tickLine={false} width={28} />
           <Tooltip
             cursor={{ fill: "rgba(74,127,181,0.08)" }}
             contentStyle={{ background: "#0D275C", border: "1px solid #2E4F85", borderRadius: 6, fontSize: 12 }}
             labelStyle={{ color: "#CDDBE8" }}
           />
-          <Bar dataKey="total" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="total" radius={[3, 3, 0, 0]} onClick={(e: any) => onBarClick?.(e?.[nameKey])} cursor={onBarClick ? "pointer" : undefined}>
             {data.map((_, i) => <Cell key={i} fill="#1F3A66" />)}
           </Bar>
-          <Bar dataKey="serviceable" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="serviceable" radius={[3, 3, 0, 0]} onClick={(e: any) => onBarClick?.(e?.[nameKey])} cursor={onBarClick ? "pointer" : undefined}>
             {data.map((_, i) => <Cell key={i} fill="#5E9468" />)}
           </Bar>
         </BarChart>

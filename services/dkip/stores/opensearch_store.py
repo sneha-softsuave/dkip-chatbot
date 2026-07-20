@@ -22,6 +22,8 @@ _MAPPING = {
         "classification": {"type": "keyword"},
         "clearance_required": {"type": "integer"},
         "superseded": {"type": "boolean"},
+        "access_tags": {"type": "keyword"},
+        "effective_date": {"type": "keyword"},
         "page_start": {"type": "integer"},
     }},
 }
@@ -50,7 +52,7 @@ def index_chunks(chunks: list[dict]) -> None:
     client().bulk(body=body, refresh=True)
 
 
-def _filters(scope: dict, clearance: int) -> list[dict]:
+def _filters(scope: dict, clearance: int, access_tags: list[str] | None = None) -> list[dict]:
     f: list[dict] = [{"range": {"clearance_required": {"lte": clearance}}}]
     if scope.get("collections"):
         f.append({"terms": {"collection_id": scope["collections"]}})
@@ -58,14 +60,21 @@ def _filters(scope: dict, clearance: int) -> list[dict]:
         f.append({"terms": {"doc_type": scope["doc_types"]}})
     if scope.get("unit"):
         f.append({"term": {"unit": scope["unit"]}})
+    if access_tags:
+        f.append({"terms": {"access_tags": access_tags}})
+    if scope.get("date_from"):
+        f.append({"range": {"effective_date": {"gte": scope["date_from"]}}})
+    if scope.get("date_to"):
+        f.append({"range": {"effective_date": {"lte": scope["date_to"]}}})
     return f
 
 
-def search(query: str, scope: dict, clearance: int, limit: int) -> list[dict]:
+def search(query: str, scope: dict, clearance: int, limit: int,
+          access_tags: list[str] | None = None) -> list[dict]:
     body = {"size": limit, "query": {"bool": {
         "must": [{"multi_match": {"query": query, "fields": ["text^1", "text.exact^3"],
                                   "type": "best_fields"}}],
-        "filter": _filters(scope, clearance)}}}
+        "filter": _filters(scope, clearance, access_tags)}}}
     res = client().search(index=settings.OPENSEARCH_INDEX, body=body)
     return [{"chunk_id": h["_id"], "score": h["_score"], "payload": h["_source"]}
             for h in res["hits"]["hits"]]
@@ -74,6 +83,17 @@ def search(query: str, scope: dict, clearance: int, limit: int) -> list[dict]:
 def delete_by_document(document_id: str) -> None:
     client().delete_by_query(index=settings.OPENSEARCH_INDEX, refresh=True,
                              body={"query": {"term": {"document_id": document_id}}})
+
+
+def delete_by_ids(ids: list[str]) -> None:
+    """Delete specific documents by their _id (used during update/re-index)."""
+    if not ids:
+        return
+    body = []
+    for did in ids:
+        body.append({"delete": {"_index": settings.OPENSEARCH_INDEX, "_id": did}})
+    if body:
+        client().bulk(body=body, refresh=True)
 
 
 def health() -> dict:

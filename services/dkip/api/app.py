@@ -11,8 +11,9 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from dkip.api.bootstrap import init_stores, seed_identity
-from dkip.api.routers import (admin, audit, config, dashboards, documents,
-                              ingestion, query, reports, summarize)
+from dkip.api.routers import (admin, audit, config, connectors, dashboards,
+                              documents, ingestion, orgs, query, reports,
+                              summarize)
 from dkip.api.routers import auth as auth_router
 from dkip.core.config import settings
 from dkip.gateway.factory import make_gateway
@@ -48,7 +49,7 @@ def create_app() -> FastAPI:
 
     for r in (auth_router.router, query.router, summarize.router, documents.router,
               ingestion.router, reports.router, dashboards.router, audit.router,
-              config.router, admin.router):
+              config.router, admin.router, orgs.router, connectors.router):
         app.include_router(r, prefix=API)
 
     @app.get("/health")
@@ -75,6 +76,20 @@ def create_app() -> FastAPI:
     @app.get(f"{API}/health")
     def health_v1():
         return health()
+
+    @app.get(f"{API}/metrics")
+    def metrics():
+        """Operational metrics (§12, FR-5.6.4). Admin-only via route guards."""
+        gw = make_gateway()
+        return {
+            "provider": {"configured": settings.MODEL_PROVIDER,
+                         "active": gw.provider, "gen_model": gw.gen_model},
+            "embed_signature": settings.embed_signature,
+            "qdrant_collection": settings.qdrant_collection,
+            "rate": {"query_per_min": settings.QUERY_RATE_PER_MIN},
+            "rag": {"retrieve_limit": settings.RETRIEVE_LIMIT,
+                    "rrf_k": settings.RRF_K, "rerank_top_k": settings.RERANK_TOP_K,
+                    "abstain_threshold": settings.RERANK_ABSTAIN_THRESHOLD}}
 
     @app.on_event("startup")
     def _startup():
