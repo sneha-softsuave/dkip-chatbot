@@ -1,0 +1,87 @@
+{
+  "description": "Golden Q&A set over the fictional DKIP corpus (PRD §7, §14.1). All content fictional. in_corpus:false items MUST abstain (§6.6).",
+  "items": [
+    {
+      "id": "g1",
+      "question": "What is the corrective procedure for hydraulic pressure loss on the recovery vehicle?",
+      "expected_answer_gist": "Halt recovery, inspect for leakage, top up OM-15 fluid; if pressure does not recover, isolate the pump and raise a first-line demand.",
+      "expected_docs": ["OM-VEH-001"],
+      "expected_sections": ["4.3"],
+      "in_corpus": true
+    },
+    {
+      "id": "g2",
+      "question": "What is the maximum winch line pull on the ARV-5?",
+      "expected_answer_gist": "9,000 kgf on a single part of line; use a snatch block to double the line for heavier casualties.",
+      "expected_docs": ["OM-VEH-001"],
+      "expected_sections": ["4.4"],
+      "in_corpus": true
+    },
+    {
+      "id": "g3",
+      "question": "Which filter is specified for hydraulic under-pressure remediation?",
+      "expected_answer_gist": "Return-line filter element HF-2205.",
+      "expected_docs": ["SOP-HYD-014", "INS-REC-2207"],
+      "in_corpus": true
+    },
+    {
+      "id": "g4",
+      "question": "What is the minimum stock holding policy for the HF-2205 filter?",
+      "expected_answer_gist": "Maintain a minimum of 20 units at first-line; reorder at 8 units.",
+      "expected_docs": ["SOP-SPARES-01"],
+      "in_corpus": true
+    },
+    {
+      "id": "g5",
+      "question": "What torque is specified for the hydraulic ram seal gland nut?",
+      "expected_answer_gist": "90 N·m.",
+      "expected_docs": ["SOP-HYD-014"],
+      "expected_sections": ["3.5"],
+      "in_corpus": true
+    },
+    {
+      "id": "g6",
+      "question": "How many recovery vehicles were unserviceable in the Q2 inspection?",
+      "expected_answer_gist": "Three vehicles were unserviceable; one awaiting spares out of 18 inspected.",
+      "expected_docs": ["INS-REC-2207"],
+      "in_corpus": true
+    },
+    {
+      "id": "g7",
+      "question": "What action is required on ARV-5 boom heel welds after 5,000 cycles?",
+      "expected_answer_gist": "Dye-penetrant test the heel weld; withdraw the vehicle if the indication exceeds 3 mm (RESTRICTED — clearance 2).",
+      "expected_docs": ["ENG-NOTE-880"],
+      "in_corpus": true,
+      "min_clearance": 2
+    },
+    {
+      "id": "g8",
+      "question": "What was recorded in field maintenance log 4471?",
+      "expected_answer_gist": "ARV-5 #07 had low hydraulic pressure (120 bar); filter HF-2205 replaced and circuit bled; re-test 152 bar, serviceable. (OCR'd scanned log.)",
+      "expected_docs": ["SCAN-LOG-4471"],
+      "in_corpus": true,
+      "requires_ocr": true
+    },
+    {
+      "id": "g9",
+      "question": "What is the recommended de-icing procedure for helicopter rotor blades in Arctic conditions?",
+      "expected_answer_gist": "OUT OF CORPUS — must abstain.",
+      "expected_docs": [],
+      "in_corpus": false
+    },
+    {
+      "id": "g10",
+      "question": "What is the effective range of the fictional XM-9 anti-tank missile?",
+      "expected_answer_gist": "OUT OF CORPUS — must abstain.",
+      "expected_docs": [],
+      "in_corpus": false
+    },
+    {
+      "id": "g11",
+      "question": "What is the muster pay scale for a junior commissioned officer?",
+      "expected_answer_gist": "OUT OF CORPUS — must abstain.",
+      "expected_docs": [],
+      "in_corpus": false
+    }
+  ]
+}

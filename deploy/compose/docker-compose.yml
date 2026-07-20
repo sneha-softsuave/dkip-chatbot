@@ -1,0 +1,166 @@
+# DKIP demo stack (Impl-Plan §13.1). One `docker compose up` brings the whole
+# platform online. MODEL_PROVIDER=cloud -> OpenAI (key from .env).
+name: dkip
+
+x-backend-env: &backend-env
+  MODEL_PROVIDER: ${MODEL_PROVIDER:-cloud}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_GEN_MODEL: ${OPENAI_GEN_MODEL:-gpt-4o-mini}
+  OPENAI_EMBED_MODEL: ${OPENAI_EMBED_MODEL:-text-embedding-3-large}
+  OPENAI_EMBED_DIM: ${OPENAI_EMBED_DIM:-3072}
+  DATABASE_URL: postgresql+psycopg://dkip:dkip@postgres:5432/dkip
+  QDRANT_URL: http://qdrant:6333
+  OPENSEARCH_URL: http://opensearch:9200
+  REDIS_URL: redis://redis:6379/0
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: dkip
+  MINIO_SECRET_KEY: dkip-secret
+  RERANKER_URL: http://reranker:8001
+  JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+  KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-http://localhost:8085/realms/dkip}
+  KEYCLOAK_JWKS_URL: ${KEYCLOAK_JWKS_URL:-http://keycloak:8080/realms/dkip/protocol/openid-connect/certs}
+  CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+  DATA_DIR: /data
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dkip
+      POSTGRES_PASSWORD: dkip
+      POSTGRES_DB: dkip
+    volumes: [pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dkip"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports: ["5432:5432"]
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    volumes: [qdrant:/qdrant/storage]
+    # (no in-image healthcheck tool; api/seed retry the connection themselves)
+    ports: ["6333:6333"]
+
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    volumes: [opensearch:/usr/share/opensearch/data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    ports: ["9200:9200"]
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: dkip
+      MINIO_ROOT_PASSWORD: dkip-secret
+    volumes: [minio:/data]
+    ports: ["9000:9000", "9001:9001"]
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports: ["6379:6379"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+    volumes:
+      - ./keycloak/realm-dkip.json:/opt/keycloak/data/import/realm-dkip.json:ro
+    ports: ["8085:8080"]
+
+  reranker:
+    build:
+      context: ../../services
+      dockerfile: Dockerfile.reranker
+    environment:
+      RERANK_MODEL: ${RERANK_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
+    volumes: [models:/models]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request as u; u.urlopen('http://localhost:8001/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    ports: ["8001:8001"]
+
+  api:
+    build:
+      context: ../../services
+      dockerfile: Dockerfile
+    environment: *backend-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      qdrant: { condition: service_started }
+      opensearch: { condition: service_started }
+      minio: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    ports: ["8000:8000"]
+
+  worker:
+    build:
+      context: ../../services
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "worker", "worker", "--loglevel=info", "--concurrency=2"]
+    environment: *backend-env
+    depends_on:
+      api: { condition: service_started }
+      redis: { condition: service_healthy }
+
+  seed:
+    build:
+      context: ../../services
+      dockerfile: Dockerfile
+    command: ["python", "-m", "dkip.scripts.seed"]
+    environment: *backend-env
+    volumes:
+      - ../../data:/data
+    depends_on:
+      api: { condition: service_healthy }
+    restart: "no"
+
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: /api/v1
+        VITE_KEYCLOAK_URL: http://localhost:8085
+        VITE_KEYCLOAK_REALM: dkip
+        VITE_KEYCLOAK_CLIENT: dkip-web
+    depends_on:
+      api: { condition: service_started }
+    ports: ["8080:80"]
+
+volumes:
+  pg: {}
+  qdrant: {}
+  opensearch: {}
+  minio: {}
+  models: {}

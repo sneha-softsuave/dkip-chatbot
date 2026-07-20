@@ -1,0 +1,43 @@
+[project]
+name = "dkip"
+version = "1.0.0"
+description = "Defense Knowledge Intelligence Platform (POC1) — backend"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.5",
+    "uvicorn[standard]==0.32.1",
+    "gunicorn==23.0.0",
+    "pydantic==2.10.3",
+    "pydantic-settings==2.6.1",
+    "python-multipart==0.0.17",
+    "SQLAlchemy==2.0.36",
+    "psycopg[binary]==3.2.3",
+    "celery==5.4.0",
+    "redis==5.2.1",
+    "qdrant-client==1.12.1",
+    "opensearch-py==2.7.1",
+    "minio==7.2.12",
+    "openai==1.57.0",
+    "httpx==0.28.1",
+    "PyJWT[crypto]==2.10.1",
+    "PyMuPDF==1.24.14",
+    "python-docx==1.1.2",
+    "python-pptx==1.0.2",
+    "openpyxl==3.1.5",
+    "selectolax==0.3.27",
+    "reportlab==4.2.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.4"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["dkip"]
+py-modules = ["worker"]
+
+[tool.setuptools.package-data]
+dkip = ["**/*.py"]
