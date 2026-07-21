@@ -5,7 +5,7 @@ answer rate, and p95 latency. Air-gap capable — no external calls beyond the
 DKIP API. Doubles as a regression guard.
 
 Usage (inside the compose network or with ports published):
-    DKIP_API=http://localhost:8000/api/v1 python eval/run.py
+    DKIP_API=http://localhost:8002/api/v1 python eval/run.py
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-API = os.getenv("DKIP_API", "http://localhost:8000/api/v1")
+API = os.getenv("DKIP_API", "http://localhost:8002/api/v1")
 USER = os.getenv("DKIP_USER", "admin")
 PASS = os.getenv("DKIP_PASS", "admin123")
 GOLDEN = Path(os.getenv("GOLDEN", "data/golden/golden.json"))

@@ -11,24 +11,26 @@ import {
   ShieldCheck,
   UploadCloud,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
 
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { StatusLed, cx } from "./ui";
+import { GlassPanel } from "./GlassPanel";
+import { Badge, StatusLed, cx } from "./ui";
 
 const NAV_GENERAL = [
   { to: "/ask", label: "Ask", icon: MessagesSquare },
-  { to: "/sources", label: "Document Library", icon: FileSearch },
+  { to: "/sources", label: "Library", icon: FileSearch },
   { to: "/summarize", label: "Summarize", icon: ScrollText },
   { to: "/reports", label: "Reports", icon: FileBarChart },
-  { to: "/dashboards", label: "Fleet Readiness", icon: LayoutDashboard },
+  { to: "/dashboards", label: "Fleet", icon: LayoutDashboard },
 ] as const;
 
 const NAV_ADMIN = [
   { to: "/ingestion", label: "Ingestion", icon: UploadCloud },
-  { to: "/audit", label: "Audit Log", icon: ShieldCheck },
-  { to: "/admin", label: "Admin Console", icon: ShieldCheck },
+  { to: "/audit", label: "Audit", icon: ShieldCheck },
+  { to: "/admin", label: "Admin", icon: Shield },
   { to: "/settings", label: "Settings", icon: Gauge },
 ] as const;
 
@@ -38,14 +40,14 @@ function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: R
       to={to}
       className={({ isActive }) =>
         cx(
-          "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors duration-fast",
+          "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-fast",
           isActive
-            ? "border-l-2 border-l-accent bg-surface-2 font-medium text-fg-hi -ml-px"
-            : "border-l-2 border-l-transparent text-fg-mid hover:bg-surface-2/60 hover:text-fg-hi",
+            ? "bg-accent text-bg"
+            : "text-fg-low hover:bg-surface-3 hover:text-fg-hi",
         )
       }
     >
-      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
       {label}
     </NavLink>
   );
@@ -63,80 +65,90 @@ export function Frame({ children }: { children: React.ReactNode }) {
   const storesOk = health.data?.status === "ok";
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1">
-        {/* Sidebar */}
-        <nav className="flex w-[220px] shrink-0 flex-col border-r border-line bg-surface-1">
-          <div className="flex h-14 items-center gap-2.5 border-b border-line px-4">
-            <Shield className="h-5 w-5 text-accent" strokeWidth={1.75} />
+    <div className="flex h-full flex-col overflow-hidden bg-bg">
+      <div className="flex min-h-0 flex-1 gap-3 p-3">
+        {/* Flat dark sidebar */}
+        <motion.nav
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+          className="surface-card flex w-[220px] shrink-0 flex-col"
+        >
+          <div className="flex h-16 items-center gap-3 border-b border-line px-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-bg shadow-glow-sm">
+              <Shield className="h-5 w-5" strokeWidth={1.75} />
+            </div>
             <div className="leading-tight">
-              <div className="font-sans text-sm font-semibold text-fg-hi">DKIP</div>
-              <div className="text-[10px] text-fg-low">Defense Knowledge Intelligence</div>
+              <div className="font-sans text-sm font-bold tracking-wide text-fg-hi">DKIP</div>
+              <div className="text-[9px] uppercase tracking-widest text-fg-low">Defense Intel</div>
             </div>
           </div>
-          <div className="flex flex-1 flex-col gap-0.5 overflow-auto p-2">
-            <div className="mb-1 px-3 pt-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-fg-low">Navigation</div>
-            {NAV_GENERAL.map((n) => <NavItem key={n.to} {...n} />)}
+
+          <div className="flex flex-1 flex-col gap-1 overflow-auto p-3">
+            <div className="mb-2 px-3 pt-2 font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-fg-dim">Operations</div>
+            {NAV_GENERAL.map((n) => (
+              <NavItem key={n.to} {...n} />
+            ))}
             {me?.role === "admin" && (
               <>
-                <div className="mb-1 mt-3 px-3 pt-1 font-sans text-[10px] font-semibold uppercase tracking-widest text-fg-low">Administration</div>
-                {NAV_ADMIN.map((n) => <NavItem key={n.to} {...n} />)}
+                <div className="mb-2 mt-4 px-3 pt-2 font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-fg-dim">Command</div>
+                {NAV_ADMIN.map((n) => (
+                  <NavItem key={n.to} {...n} />
+                ))}
               </>
             )}
-            {me?.role !== "admin" && (
-              <NavItem to="/settings" label="Settings" icon={Gauge} />
-            )}
+            {me?.role !== "admin" && <NavItem to="/settings" label="Settings" icon={Gauge} />}
           </div>
-        </nav>
+
+          <div className="border-t border-line p-3">
+            <div className="flex items-center gap-3 rounded-md bg-surface-1 p-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-3 font-mono text-xs font-bold text-accent">
+                {me?.name?.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-medium text-fg-hi">{me?.name}</div>
+                <div className="truncate text-[10px] text-fg-low">
+                  {me?.role} · CLR-{me?.clearance}
+                </div>
+              </div>
+              <button onClick={logout} className="btn-ghost !p-2" title="Sign out" aria-label="Sign out">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </motion.nav>
 
         {/* Main column */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* Classification banner — top (§11.1) */}
-          <div className="flex h-7 shrink-0 items-center justify-center text-[10px] font-semibold uppercase tracking-[0.15em]"
-               style={{ background: "var(--color-classification-banner)", color: "var(--color-classification-banner-fg)" }}>
-            {me?.classification_banner || "UNCLASSIFIED // FOR DEMONSTRATION"}
-          </div>
-          <header className="flex h-14 items-center justify-between border-b border-line bg-surface-1 px-6">
-            <div className="flex items-center gap-2">
-              <StatusLed tone={provider ? "ok" : "idle"} />
-              <span className="stamp text-fg-mid">
-                {provider ? `${provider.active ?? provider.configured} · ${provider.gen_model ?? ""}` : "connecting…"}
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {/* Flat dark header */}
+          <motion.header
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="surface-card flex h-14 items-center justify-between px-5"
+          >
+            <div className="flex items-center gap-3">
+              <Badge tone="signal">
+                <StatusLed tone={provider ? "ok" : "idle"} />
+                {provider ? `${provider.active ?? provider.configured}` : "connecting"}
+              </Badge>
+              <span className="stamp hidden text-fg-dim sm:inline">
+                {provider?.gen_model ?? ""}
               </span>
             </div>
-            {me && (
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <div className="text-sm font-medium leading-tight text-fg-hi">{me.name}</div>
-                  <div className="stamp text-fg-low">
-                    {me.role} · Clearance {me.clearance}
-                  </div>
-                </div>
-                <button onClick={logout} className="btn-ghost !px-2 !py-2" title="Sign out" aria-label="Sign out">
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </header>
 
-          <main className="min-h-0 flex-1 overflow-auto p-6">{children}</main>
-
-          {/* Classification banner — bottom */}
-          <div className="flex h-6 shrink-0 items-center justify-center border-t border-line text-[10px] font-semibold uppercase tracking-[0.15em]"
-               style={{ background: "var(--color-classification-banner)", color: "var(--color-classification-banner-fg)" }}>
-            {me?.classification_banner || "UNCLASSIFIED // FOR DEMONSTRATION"}
-          </div>
-          {/* Status strip */}
-          <footer className="flex h-8 items-center justify-between border-t border-line bg-surface-1 px-6 text-fg-low">
-            <div className="flex items-center gap-4">
-              <StatusLed tone={storesOk ? "ok" : "caution"} label={storesOk ? "Systems nominal" : "Systems degraded"} />
-              <span className="stamp flex items-center gap-1">
-                <Gauge className="h-3 w-3" /> {health.data?.status ?? "…"}
-              </span>
+            <div className="flex items-center gap-3">
+              <GlassPanel className="flex items-center gap-2 px-3 py-1.5" hover={false} elevated>
+                <StatusLed tone={storesOk ? "ok" : "caution"} />
+                <span className="stamp text-fg-mid">{storesOk ? "Systems nominal" : "Systems degraded"}</span>
+              </GlassPanel>
             </div>
-            <span className="stamp">DKIP POC1 {me?.org_id ? `· ${me.org_id}` : ""}</span>
-          </footer>
+          </motion.header>
+
+          <main className="min-h-0 flex-1 overflow-auto rounded-xl bg-bg p-4">{children}</main>
         </div>
       </div>
+
     </div>
   );
 }

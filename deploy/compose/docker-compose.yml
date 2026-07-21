@@ -78,7 +78,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-    ports: ["6379:6379"]
+    # Host port 6380 avoids conflict with other local Redis containers (e.g. cs-agent).
+    # Internal service URL remains redis://redis:6379/0.
+    ports: ["6380:6379"]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
@@ -121,7 +123,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-    ports: ["8000:8000"]
+    # Host port 8002 avoids conflict with other local API containers (e.g. cs-agent).
+    # Internal service URL remains http://api:8000.
+    ports: ["8002:8000"]
 
   worker:
     build:

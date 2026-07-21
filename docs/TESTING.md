@@ -30,7 +30,7 @@ Prerequisites: the stack is up and the corpus is seeded (see `RUNNING.md`). Sign
 ---
 
 ## T1 — Health & login
-1. `curl -s http://localhost:8000/health` → `status: ok`, every store `reachable: true`, provider shows your configured provider.
+1. `curl -s http://localhost:8002/health` → `status: ok`, every store `reachable: true`, provider shows your configured provider.
 2. Open http://localhost:8080 → the **command-console login** renders with classification banners top and bottom.
 3. Sign in as `analyst` / `analyst123`.
 **Expected:** you land on **Ask**; the header shows your name, role (`user`), and clearance (`CLR-2`); the footer shows "stores nominal".
@@ -79,7 +79,7 @@ Prerequisites: the stack is up and the corpus is seeded (see `RUNNING.md`). Sign
 
 ## T11 — RBAC role enforcement
 1. As `analyst` (user), confirm the **Ingest** and **Audit** items are **absent** from the nav.
-2. Hit an admin route directly: `curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer <analyst-token>" http://localhost:8000/api/v1/audit` → **403**.
+2. Hit an admin route directly: `curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer <analyst-token>" http://localhost:8002/api/v1/audit` → **403**.
 **Expected:** users cannot reach admin routes (FR-5.1.7). (Get a token via `POST /api/v1/auth/login`.)
 
 ## T12 — Clearance enforced at retrieval
@@ -106,7 +106,7 @@ Prerequisites: the stack is up and the corpus is seeded (see `RUNNING.md`). Sign
 
 ## T16 — Golden-set evaluation (offline harness)
 ```bash
-DKIP_API=http://localhost:8000/api/v1 python eval/run.py
+DKIP_API=http://localhost:8002/api/v1 python eval/run.py
 ```
 **Expected:** a metrics table — retrieval hit-rate / MRR, answer rate, citation correctness, **abstention correctness (out-of-corpus = 100%)**, and p95 latency — ending in `RESULT: PASS` when no out-of-corpus question leaked and every in-corpus question retrieved its expected document.
 

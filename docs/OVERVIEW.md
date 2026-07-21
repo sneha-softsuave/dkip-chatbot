@@ -317,7 +317,7 @@ FastAPI (Python). Every business rule lives here: authentication, permissions,
 the RAG pipeline, summaries, reports, audit logging. The frontend has no direct
 access to any database — it only ever talks to this.
 
-Interactive API docs: http://localhost:8000/docs
+Interactive API docs: http://localhost:8002/docs
 
 *Code:* `services/dkip/api/routers/` — one file per feature area.
 

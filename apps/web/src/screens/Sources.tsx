@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, FileText, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useState } from "react";
 
-import { Badge, PageHeader, Panel, Spinner, cx } from "../components/ui";
+import { GlassPanel } from "../components/GlassPanel";
+import { PageTransition, StaggerContainer, StaggerItem } from "../components/PageTransition";
+import { Badge, HoloButton, PageHeader, Spinner, cx } from "../components/ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { DocumentMeta } from "../lib/types";
@@ -25,11 +28,7 @@ export function Sources() {
   const del = useMutation({
     mutationFn: (id: string) => api.del(`/documents/${id}`),
     onSuccess: (_data, id) => {
-      // Remove from current filter's cache immediately
-      qc.setQueryData<DocumentMeta[]>(["documents", type], (old) =>
-        old ? old.filter((d) => d.id !== id) : old,
-      );
-      // Also invalidate all other document queries so they refetch
+      qc.setQueryData<DocumentMeta[]>(["documents", type], (old) => (old ? old.filter((d) => d.id !== id) : old));
       qc.invalidateQueries({ queryKey: ["documents"] });
     },
   });
@@ -43,62 +42,70 @@ export function Sources() {
   const types = ["", "manual", "sop", "record", "engineering"];
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <PageHeader title="Document Library" sub="Browse, open, and manage indexed documents" />
+    <PageTransition>
+      <div className="mx-auto max-w-6xl">
+        <PageHeader title="Document Library" sub="Browse, open, and manage indexed documents" />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {types.map((t) => (
-          <button key={t || "all"} onClick={() => setType(t)} className={cx("chip capitalize", type === t && "chip-active")}>
-            {t || "All types"}
-          </button>
-        ))}
-      </div>
-
-      {docs.isLoading ? (
-        <div className="flex justify-center py-16">
-          <Spinner className="h-6 w-6" />
-        </div>
-      ) : !docs.data || docs.data.length === 0 ? (
-        <Panel className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <FileText className="h-8 w-8 text-fg-low" />
-          <div className="text-sm font-medium text-fg-mid">No documents indexed yet</div>
-          <p className="max-w-xs text-sm text-fg-low">
-            Upload documents through the Ingestion console to populate the library.
-          </p>
-        </Panel>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {(docs.data ?? []).map((d) => (
-            <Panel key={d.id} className="flex flex-col p-4">
-              <div className="flex items-start justify-between">
-                <FileText className="h-5 w-5 text-accent" />
-                <div className="flex gap-1">
-                  <Badge tone={TYPE_TONE[d.doc_type] ?? "neutral"}>{d.doc_type}</Badge>
-                  {d.classification !== "UNCLASSIFIED" && <Badge tone="caution">{d.classification}</Badge>}
-                </div>
-              </div>
-              <div className="mt-2 font-mono text-xs text-fg-low">{d.doc_code}</div>
-              <div className="text-base font-semibold leading-snug text-fg-hi">{d.title}</div>
-              <div className="stamp mt-2 flex flex-wrap gap-x-3 gap-y-1 text-fg-low">
-                <span>rev {d.revision}</span>
-                <span>{d.page_count}p</span>
-                {d.unit && <span>{d.unit}</span>}
-              </div>
-              <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
-                <button className="btn-ghost !py-1.5 text-xs" onClick={() => openFile(d)}>
-                  <ExternalLink className="h-3.5 w-3.5" /> Open
-                </button>
-                {me?.role === "admin" && (
-                  <button className="btn-ghost !py-1.5 !px-2 text-xs text-critical hover:border-critical/50"
-                    onClick={() => del.mutate(d.id)} title="Delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </Panel>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {types.map((t) => (
+            <button key={t || "all"} onClick={() => setType(t)} className={cx("chip capitalize", type === t && "chip-active")}>
+              {t || "All types"}
+            </button>
           ))}
         </div>
-      )}
-    </div>
+
+        {docs.isLoading ? (
+          <div className="flex justify-center py-16">
+            <Spinner className="h-6 w-6" />
+          </div>
+        ) : !docs.data || docs.data.length === 0 ? (
+          <GlassPanel className="flex flex-col items-center justify-center gap-3 py-16 text-center" hover={false}>
+            <FileText className="h-8 w-8 text-fg-low" />
+            <div className="text-sm font-medium text-fg-mid">No documents indexed yet</div>
+            <p className="max-w-xs text-sm text-fg-low">Upload documents through the Ingestion console to populate the library.</p>
+          </GlassPanel>
+        ) : (
+          <StaggerContainer className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(docs.data ?? []).map((d) => (
+              <StaggerItem key={d.id}>
+                <GlassPanel className="flex flex-col p-4" hover>
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-surface">
+                      <FileText className="h-5 w-5 text-accent" />
+                    </div>
+                    <div className="flex gap-1">
+                      <Badge tone={TYPE_TONE[d.doc_type] ?? "neutral"}>{d.doc_type}</Badge>
+                      {d.classification !== "UNCLASSIFIED" && <Badge tone="caution">{d.classification}</Badge>}
+                    </div>
+                  </div>
+                  <div className="mt-3 font-mono text-xs text-fg-low">{d.doc_code}</div>
+                  <div className="text-base font-semibold leading-snug text-fg-hi">{d.title}</div>
+                  <div className="stamp mt-2 flex flex-wrap gap-x-3 gap-y-1 text-fg-low">
+                    <span>rev {d.revision}</span>
+                    <span>{d.page_count}p</span>
+                    {d.unit && <span>{d.unit}</span>}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
+                    <HoloButton variant="ghost" className="!py-1.5 text-xs" onClick={() => openFile(d)}>
+                      <ExternalLink className="h-3.5 w-3.5" /> Open
+                    </HoloButton>
+                    {me?.role === "admin" && (
+                      <HoloButton
+                        variant="ghost"
+                        className="!px-2 !py-1.5 text-xs text-critical hover:border-critical/50"
+                        onClick={() => del.mutate(d.id)}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </HoloButton>
+                    )}
+                  </div>
+                </GlassPanel>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        )}
+      </div>
+    </PageTransition>
   );
 }

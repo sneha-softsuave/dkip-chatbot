@@ -12,7 +12,7 @@ How to bring up the **Defense Knowledge Intelligence Platform (POC1)** demo stac
 | **RAM for Docker** | **≥ 8 GB** allocated (OpenSearch + Qdrant + Keycloak + the torch reranker are the heavy ones). 6 GB works if you skip Keycloak. |
 | **Disk** | ~6 GB for images + the reranker model. |
 | **OpenAI API key** | For the default `cloud` provider (real GPT + `text-embedding-3-large`). **Optional** — set `MODEL_PROVIDER=fake` to run fully offline with no key. |
-| Ports free | `8080` web · `8000` api · `8085` keycloak · `9001` MinIO console · `6333` qdrant · `9200` opensearch · `5432` postgres · `6379` redis · `8001` reranker |
+| Ports free | `8080` web · `8002` api · `8085` keycloak · `9001` MinIO console · `6333` qdrant · `9200` opensearch · `5432` postgres · `6380` redis · `8001` reranker |
 
 > **Windows (WSL2):** Docker Desktop handles the OpenSearch `vm.max_map_count` requirement automatically. On native Linux, run `sudo sysctl -w vm.max_map_count=262144` once if OpenSearch fails to start.
 
@@ -48,7 +48,7 @@ Watch health until everything is green:
 
 ```bash
 docker compose ps
-curl -s http://localhost:8000/health | python -m json.tool
+curl -s http://localhost:8002/health | python -m json.tool
 ```
 
 The **`seed`** service runs automatically once the API is healthy: it generates the fictional corpus, loads the fleet table, and ingests every document. Watch it:
@@ -84,8 +84,8 @@ Local sign-in is the guaranteed path. **Keycloak SSO** is also wired (realm `dki
 | Service | URL | Login |
 |---|---|---|
 | Web app | http://localhost:8080 | demo accounts above |
-| API docs (Swagger) | http://localhost:8000/docs | bearer token |
-| Health | http://localhost:8000/health | — |
+| API docs (Swagger) | http://localhost:8002/docs | bearer token |
+| Health | http://localhost:8002/health | — |
 | Keycloak | http://localhost:8085 | admin / admin |
 | MinIO console | http://localhost:9001 | dkip / dkip-secret |
 | Qdrant | http://localhost:6333/dashboard | — |
@@ -103,7 +103,7 @@ Only the AI provider changes between demo and production — the app, data model
 
 ```bash
 # flip provider (admin token required)
-curl -X PUT http://localhost:8000/api/v1/config/model-provider \
+curl -X PUT http://localhost:8002/api/v1/config/model-provider \
   -H "Authorization: Bearer <admin-token>" -H "Content-Type: application/json" \
   -d '{"provider":"fake"}'
 ```
@@ -136,5 +136,5 @@ docker compose down -v       # stop and wipe all data (fresh start)
 | OpenSearch container exits on Linux | `sudo sysctl -w vm.max_map_count=262144` then `docker compose up -d opensearch`. |
 | Answers come back but rerank is "lexical" in `/health` | The cross-encoder model is still downloading on first boot; it upgrades automatically. |
 | `/health` provider shows `fake` but you set `cloud` | `OPENAI_API_KEY` is missing/empty — the gateway auto-degrades to `fake` rather than crashing. Set the key and `docker compose up -d api worker`. |
-| Port already in use | Stop the conflicting service or edit the published ports in `docker-compose.yml`. |
+| Port already in use | Default published ports are `8002` (api) and `6380` (redis) to avoid colliding with other local stacks such as `cs-agent`. Stop the conflicting service, or edit the published ports in `docker-compose.yml` and the matching `localhost` URLs in this doc. |
 | Seed says every file `skipped` | Content-hash dedupe — the corpus is already ingested. Expected on re-run. |

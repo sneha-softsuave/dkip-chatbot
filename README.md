@@ -59,5 +59,5 @@ Defense command-console aesthetic: deep gunmetal-navy graphite, a single phospho
 
 ```bash
 cd services && python -m tests.test_rag_core          # grounding guardrail + fusion self-check (no stack)
-DKIP_API=http://localhost:8000/api/v1 python eval/run.py   # golden-set metrics (stack up)
+DKIP_API=http://localhost:8002/api/v1 python eval/run.py   # golden-set metrics (stack up)
 ```
