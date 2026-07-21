@@ -12,6 +12,7 @@ from dkip.core.deps import Principal
 from dkip.db.models import Chunk, Document
 from dkip.gateway.factory import make_gateway
 from dkip.rag.cite import bind_citations, citation_coverage, strip_markers
+from dkip.rag.pipeline import resolve_collections
 from dkip.rag.prompt import Evidence
 from dkip.stores import opensearch_store, qdrant_store
 
@@ -88,6 +89,7 @@ def summarize_document(db: Session, *, doc_id: str, fmt: str, user: Principal) -
 def summarize_topic(db: Session, *, topic: str, scope: dict, fmt: str,
                     user: Principal) -> dict:
     gateway = make_gateway()
+    scope["collections"] = resolve_collections(db, scope.get("collections"))
     qvec = gateway.embed([topic])[0]
     dense = qdrant_store.search(qvec, scope, user.clearance, 12)
     lexical = opensearch_store.search(topic, scope, user.clearance, 12)

@@ -31,6 +31,7 @@ async def upload(request: Request, files: list[UploadFile] = File(...),
     db.add(job); db.flush()
 
     from worker import celery_app  # local import: API image also has the task module
+    filenames = []
     for f in files:
         data = await f.read()
         incoming_key = objects.put_bytes(settings.MINIO_BUCKET_RAW,
@@ -38,6 +39,7 @@ async def upload(request: Request, files: list[UploadFile] = File(...),
                                          f.content_type or "application/octet-stream")
         row = IngestionFile(job_id=job.id, filename=f.filename, status="pending")
         db.add(row); db.flush()
+        filenames.append(f.filename)
         meta = {"collection_id": coll.id if coll else None, "doc_type": doc_type,
                 "classification": classification, "unit": unit or None,
                 "revision": revision, "title": f.filename, "created_by": user.user_id,
@@ -47,7 +49,7 @@ async def upload(request: Request, files: list[UploadFile] = File(...),
     db.commit()
     audit.record(db, action="upload", actor_user_id=user.user_id,
                  actor_name=user.name, org_id=user.org_id, target_type="job",
-                 target_id=job.id, request_meta={"files": len(files)})
+                 target_id=job.id, request_meta={"files": len(files), "filenames": filenames})
     return {"job_id": job.id, "files": len(files), "status": "accepted"}
 
 
@@ -135,7 +137,10 @@ def download(doc_id: str, user: Principal = Depends(current_user),
         raise HTTPException(404, "not found")
     if d.clearance_required > user.clearance:
         raise HTTPException(403, "above clearance")
-    data = objects.get_by_object_key(d.object_key)
+    try:
+        data = objects.get_by_object_key(d.object_key)
+    except Exception:
+        raise HTTPException(404, "file not available in object store")
     ct = "application/pdf" if d.object_key.lower().endswith(".pdf") else "application/octet-stream"
     return Response(content=data, media_type=ct)
 

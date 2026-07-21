@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from dkip.core.config import settings
 from dkip.core.deps import Principal
-from dkip.db.models import Answer, Chunk, ChatMessage, Document
+from dkip.db.models import Answer, Chunk, ChatMessage, Collection, Document
 from dkip.gateway.base import ModelGateway
 from dkip.gateway.factory import make_gateway
 from dkip.rag.cite import finalize
@@ -58,12 +58,26 @@ def _load_evidence(db: Session, fused: list[dict]) -> tuple[list[dict], list[str
     return cands, texts
 
 
+def resolve_collections(db: Session, slugs: list[str] | None) -> list[str] | None:
+    """Resolve collection slugs to UUIDs for store payload filtering (§5.3).
+    The UI sends slugs; Qdrant/OpenSearch payloads store UUIDs."""
+    if not slugs:
+        return None
+    rows = db.execute(
+        select(Collection.id).where(Collection.slug.in_(slugs))
+    ).scalars().all()
+    return list(rows) if rows else None
+
+
 def run_query(db: Session, *, question: str, scope: dict, user: Principal,
               session_id: str | None = None, message_id: str | None = None) -> dict:
     t0 = time.perf_counter()
     gateway = make_gateway()
 
     qr = rewrite(gateway, db, question, session_id)
+
+    # Resolve collection slugs to UUIDs before passing to stores (§5.3 scope filter)
+    scope["collections"] = resolve_collections(db, scope.get("collections"))
 
     qvec = gateway.embed([qr])[0]
     at = list(user.access_tags) if user.access_tags else None

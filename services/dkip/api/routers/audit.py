@@ -37,7 +37,11 @@ def search(action: str | None = None, actor: str | None = None,
 @router.get("/audit/verify")
 def verify(user: Principal = Depends(require_role("admin")),
            db: Session = Depends(get_db)):
-    return audit_mod.verify_chain(db)
+    result = audit_mod.verify_chain(db)
+    audit_mod.record(db, action="verify_integrity", actor_user_id=user.user_id,
+                     actor_name=user.name, org_id=user.org_id,
+                     request_meta=result)
+    return result
 
 
 @router.get("/audit/export")
