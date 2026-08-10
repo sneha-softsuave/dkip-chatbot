@@ -2,162 +2,556 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens — the dark values. A theme restates this block; nothing else
+   in the app knows a colour.
+
+   Every --c-* is a space-separated RGB channel triple, never a hex and never
+   an rgb() wrapper, because tailwind.config.js consumes them as
+   `rgb(var(--c-x) / <alpha-value>)`. That placeholder is what keeps the ~30
+   slash-suffixed opacity utilities in the app working — a translucent accent
+   border, a tinted status fill, a semi-opaque surface. A hex here compiles
+   clean, typechecks, builds, renders correctly at full opacity, and silently
+   flattens every one of them. */
 :root {
-  color-scheme: dark;
-  /* Binance-inspired tokens — synced with tailwind.config.js */
-  --color-classification-banner: rgba(14, 203, 129, 0.12);
-  --color-classification-banner-fg: #0ecb81;
-  --color-chart-1: #FCD535;
-  --color-chart-2: #0ecb81;
-  --color-chart-3: #f0b90b;
-  --color-chart-4: #f6465d;
-  --color-chart-5: #3b82f6;
-  --color-chart-6: #2dbdb6;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --transition-fast: 120ms;
-  --transition-normal: 200ms;
-  --transition-slow: 300ms;
+  --color-scheme: dark;
+  color-scheme: var(--color-scheme);
+
+  /* Cool blue-slate, not neutral black. The green channel (which drives WCAG
+     luminance) is held within ~2 of the previous neutral ramp, so every text
+     pair keeps its contrast; blue is lifted and red trimmed for the undertone,
+     and the gaps between planes widened so cards read as lit surfaces rather
+     than as one flat sheet. Verified: all fg pairs still clear 4.5:1 on the
+     darkest surface each reaches (worst fg-dim/surface-3 4.52), and every
+     surface/line separation is >= the old ramp's. */
+  --c-bg: 11 13 19;
+  --c-surface-1: 19 22 30;
+  --c-surface-2: 27 31 41;
+  --c-surface-3: 37 42 54;
+  --c-surface-4: 48 54 68;
+
+  --c-line: 37 42 54;
+  --c-line-strong: 54 61 77;
+
+  /* Ambient accent field for the app shell — the sign-in's blue atmosphere
+     brought inside, so the canvas is not flat black. Two soft radials of the
+     accent; the alphas are per-theme because a wash that reads as depth on a
+     dark canvas reads as a stain on a light one. */
+  --ambient-1: 0.16;
+  --ambient-2: 0.11;
+
+  /* Depth system (glass + glow + a faint accent grid). The grid is drawn in the
+     accent and kept very faint; glass alpha stays high enough that text on a
+     frosted surface still clears AA over the busiest backdrop. */
+  --grid-alpha: 0.05;
+  --glass-alpha: 0.68;
+  --glass-blur: 14px;
+  --glow-accent: 0 10px 34px -14px rgb(var(--c-accent) / 0.5);
+  /* Soft luminous depth — drifting blurred blobs (see `.aurora`). A DECORATIVE
+     blue, separate from the text-bound accent: on dark it's the bright accent. */
+  --aurora-opacity: 0.35;
+  --c-aurora: 110 139 255;
+
+  --c-fg-hi: 242 244 247;
+  --c-fg-mid: 196 202 211;
+  --c-fg-low: 155 163 174;
+  --c-fg-dim: 138 145 156;
+
+  --c-accent: 110 139 255;
+  --c-accent-dim: 85 112 232;
+  --c-accent-soft: 143 164 255;
+  --c-accent-pale: 185 196 255;
+
+  --c-ok: 62 207 142;
+  --c-caution: 224 163 46;
+  --c-critical: 236 93 98;
+
+  /* Selected text sits on a 28% accent wash, so it is pure white rather than
+     fg-hi. Its own token because a light canvas needs the opposite end. */
+  --c-selection-fg: 255 255 255;
+
+  /* Login submit gradient. See .btn-hero for why the ramp runs darker. */
+  --c-hero-from: 76 107 224;
+  --c-hero-to: 53 80 188;
+  --c-hero-from-hover: 68 96 214;
+  --c-hero-to-hover: 47 73 176;
+
+  /* Elevation. Whole shadow strings, not channels, so no --c- prefix. */
+  --e1: inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.35), 0 3px 8px -3px rgba(0,0,0,0.40);
+  --e2: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 4px -1px rgba(0,0,0,0.35), 0 10px 28px -8px rgba(0,0,0,0.50);
+  --e3: inset 0 1px 0 rgba(255,255,255,0.07), 0 6px 12px -4px rgba(0,0,0,0.45), 0 26px 60px -14px rgba(0,0,0,0.65);
 }
 
-* { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+/* Theme tokens — the light values. Re-derived on a light ramp, not inverted.
+   Every foreground below was computed (WCAG 2.1 relative luminance) against
+   the surface it actually sits on, and against the translucent washes it sits
+   on where those exist; nothing here is a flipped dark value.
+
+   The accent is the clearest case. #6E8BFF measures 3.09:1 on white, so on
+   this canvas it cannot carry text at all. #3B57CC measures 6.14:1 on
+   surface-1 and 4.57:1 on its own 12% wash over bg, which is the worst
+   backdrop it lands on. That is the same method as the .btn-hero note further
+   down, asking the opposite question: that one is the lightest blue *white
+   text* clears 4.5:1 on, this one is the lightest blue that clears 4.5:1 *as*
+   text.
+
+   Targets: body text and accent-as-text >= 4.5:1 on the darkest surface each
+   reaches; line, line-strong and the gutter/LED marks >= 3:1.
+
+   Equal specificity to :root, so this block must stay after it. It restates
+   every property and adds none — :root remains the sole declaration site. */
+[data-theme="light"] {
+  --color-scheme: light;
+
+  /* Canvas is grey and cards are white, so this ramp is deliberately not
+     monotonic: bg sits between surface-2 and surface-3. Elevation still reads
+     upward because each fill is measured against the surface it covers, and
+     the perceptual steps match the dark ramp (dE76 6.0 / 4.0 / 4.3 / 5.4
+     against dark's 3.5 / 4.5 / 4.9 / 5.7). */
+  --c-bg: 237 240 245;
+  --c-surface-1: 255 255 255;
+  --c-surface-2: 243 246 250;
+  --c-surface-3: 231 234 240;
+  --c-surface-4: 214 220 229;
+
+  /* Soft light-mode hairlines. These were once a heavy grey (#838996) because
+     the elevation was minimal and the border had to carry separation — but the
+     glass pass gave light real layered shadows, so the borders can now be the
+     quiet hairlines a premium light UI uses (white cards on the off-white bg +
+     soft shadow do the separating). `line-strong` stays a touch more present for
+     hover/emphasis and the idle provenance mark. */
+  --c-line: 223 227 234;
+  --c-line-strong: 198 204 214;
+
+  --c-fg-hi: 14 17 22;
+  --c-fg-mid: 51 58 69;
+  --c-fg-low: 78 87 102;
+  /* The trap in this palette. #6B7280 is the obvious "light grey, looks nice"
+     pick and measures 4.01:1 on surface-3 — a fail repeated across 74 usages.
+     This is 4.81:1 there and 5.07:1 on bg. */
+  --c-fg-dim: 93 102 117;
+
+  --c-accent: 59 87 204;
+  --c-accent-dim: 47 71 170;
+  /* Still three weights of one blue, but the ramp runs down from the accent
+     rather than up: anything lighter than the accent fails as text here
+     (#B9C4FF is 1.69:1 on white). dE76 22.9 and 18.8 between neighbours. */
+  --c-accent-soft: 51 64 143;
+  --c-accent-pale: 35 43 94;
+
+  /* Darkened until each clears 4.5:1 as text on its own wash, measured over
+     the surface that wash actually composites onto rather than an assumed
+     white. The binding cases are the worst backdrop each one reaches, not the
+     lightest: caution's superseded-citation chip (answer.tsx:68) hangs off
+     `.gutter`, which paints nothing, so its 15% and 25% washes land on `bg`,
+     not on a card — 4.55:1 at 25%, where #8A5A00 gave 3.67:1. Critical is
+     bound instead by ConfirmDialog's `hover:bg-critical/85` carrying
+     near-white `text-bg` at 4.52:1. The dark trio clears neither — #3ECF8E is
+     2.00:1 on white, #E0A32E 2.22:1.
+
+     Hues are unmoved, so the meanings hold. Honest caveat: a light canvas
+     forces both caution and critical into the same narrow lightness band
+     (L* 35.5 and 39.0, a 3.6 gap against the dark pair's 12.5), because the
+     contrast targets push one down and the other down with it. Under
+     deuteranopia that pair separates by less than it does in dark. What
+     carries the distinction is that neither mark is colour-only — every
+     gutter rule and Badge ships words beside it. */
+  --c-ok: 15 115 70;
+  --c-caution: 116 75 0;
+  --c-critical: 177 35 37;
+
+  /* Fainter and cooler on white: on a light canvas an accent wash tips into
+     "muddy" fast, so the ambient field is barely there — a hint of cool, not a
+     tint. */
+  --ambient-1: 0.14;
+  --ambient-2: 0.10;
+  --grid-alpha: 0.045;
+  --glass-alpha: 0.72;
+  --glass-blur: 14px;
+  --glow-accent: 0 10px 34px -14px rgb(var(--c-accent) / 0.28);
+  /* On white the aurora is a LIGHT sky-blue (not the dark indigo accent, which
+     stains) — but light enough to stay airy while still clearly VISIBLE as
+     moving depth. Decorative, so it's free of the accent's text-contrast rule. */
+  --aurora-opacity: 0.7;
+  --c-aurora: 138 164 242;
+
+  /* The 28% accent wash is pale on white, so selected text goes dark. */
+  --c-selection-fg: 14 17 22;
+
+  /* The submit label is still white, so the ramp is still bound by that:
+     6.14:1 at the top stop, 9.17:1 at the bottom. */
+  --c-hero-from: 59 87 204;
+  --c-hero-to: 42 63 156;
+  --c-hero-from-hover: 51 77 188;
+  --c-hero-to-hover: 36 55 140;
+
+  /* No inset hairline: a white top edge on a white card is grime, not light.
+     The cast drops from 0.40/0.50/0.60 to 0.06/0.08/0.10 — the same alpha on
+     a light canvas reads as a bruise rather than as depth. --c-line above
+     absorbs what the shadow gives up. */
+  --e1: 0 1px 2px rgba(15,23,42,0.06), 0 2px 6px -2px rgba(15,23,42,0.06);
+  --e2: 0 2px 6px -1px rgba(15,23,42,0.07), 0 12px 28px -8px rgba(15,23,42,0.12);
+  --e3: 0 6px 16px -4px rgba(15,23,42,0.10), 0 28px 64px -16px rgba(15,23,42,0.18);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
 html, body, #root { height: 100%; }
 
 body {
-  @apply bg-bg text-fg-mid font-sans;
+  @apply bg-bg font-sans text-body text-fg-mid;
   margin: 0;
 }
 
-::selection { background: rgba(252, 213, 53, 0.25); color: #ffffff; }
+::selection { background: rgb(var(--c-accent) / 0.28); color: rgb(var(--c-selection-fg)); }
 
-/* Scrollbars — thin, dark-market style */
-*::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Scrollbars — thin, and only visible against the surface they sit on. */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb {
-  background: #2b3139; border-radius: 9999px;
-}
-*::-webkit-scrollbar-thumb:hover { background: #3a424a; }
+*::-webkit-scrollbar-thumb { background: rgb(var(--c-line)); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-line-strong)); }
 
-/* Focus ring — info blue */
+/* One focus treatment everywhere. The 2px offset is what lets the ring sit on
+   an accent-filled button without disappearing into it — which is why there is
+   no separate focus colour token. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline: 2px solid rgb(var(--c-accent));
   outline-offset: 2px;
   border-radius: 6px;
 }
 
+/* <main> is focused programmatically on every route change so screen-reader
+   and keyboard users land on the new page. That's a scripted focus move, not a
+   user landing on a control — ringing the entire content area would be noise. */
+main:focus,
+main:focus-visible {
+  outline: none;
+}
+
 @layer components {
-  /* Flat surface cards (Binance style) */
-  .surface-card { @apply relative rounded-xl border border-line bg-surface-2; }
-  .surface-elevated { @apply relative rounded-xl border border-line-strong bg-surface-3; }
+  /* ── Surfaces ────────────────────────────────────────────────────────────
+     Depth comes from the elevation scale, not from borders alone. e1 rests,
+     e2 is the hover/floating tier, e3 is for things that sit above the page. */
+  .surface-card {
+    @apply relative rounded-lg border border-line bg-surface-1 shadow-e1;
+  }
+  .surface-elevated {
+    @apply relative rounded-md border border-line-strong bg-surface-2 shadow-e2;
+  }
 
-  /* Legacy panel helpers — remapped to flat cards */
-  .panel { @apply surface-card; }
-  .panel-2 { @apply surface-elevated; }
+  .card { @apply surface-card p-5; }
+  .card-tight { @apply surface-card p-4; }
 
+  /* The blue atmosphere from the sign-in, as a shell backdrop. Sits behind the
+     transparent content area, so it blooms through the canvas and the gutters
+     between cards while every opaque surface occludes it — atmosphere in the
+     gaps, clean planes on top. Decorative only: it carries no meaning and no
+     text, so it does not touch the accent-is-interactive rule. */
+  .ambient-field {
+    background:
+      radial-gradient(70rem 54rem at 10% -16%, rgb(var(--c-accent) / var(--ambient-1)), transparent 60%),
+      radial-gradient(60rem 50rem at 100% 4%, rgb(var(--c-accent) / var(--ambient-2)), transparent 58%),
+      radial-gradient(56rem 48rem at 42% 116%, rgb(var(--c-accent) / calc(var(--ambient-2) * 0.85)), transparent 60%),
+      radial-gradient(40rem 36rem at 82% 66%, rgb(var(--c-accent) / calc(var(--ambient-1) * 0.5)), transparent 62%);
+  }
+  /* A faint accent-tinted grid, masked so it is strongest up top and dissolves
+     toward the edges — the engineered-surface texture that gives the canvas
+     depth in LIGHT mode, where the additive WebGL corridor draws nothing. */
+  .ambient-grid {
+    background-image:
+      linear-gradient(to right, rgb(var(--c-accent) / var(--grid-alpha)) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--c-accent) / var(--grid-alpha)) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(135% 115% at 50% -12%, #000 40%, transparent 100%);
+    mask-image: radial-gradient(135% 115% at 50% -12%, #000 40%, transparent 100%);
+  }
+
+  /* ── Soft luminous depth (aurora) ────────────────────────────────────────
+     Large blurred accent blobs drifting slowly — moving depth in BOTH themes,
+     the premium alternative to a wireframe on white (which reads as hard lines).
+     Reduced-motion holds them still (global media query neutralises the drift). */
+  .aurora-blob {
+    @apply pointer-events-none absolute rounded-full;
+    opacity: var(--aurora-opacity);
+    filter: blur(64px);
+    will-change: transform;
+  }
+  .aurora-blob-1 {
+    width: 44rem; height: 44rem; left: -10rem; top: -14rem;
+    background: radial-gradient(closest-side, rgb(var(--c-aurora) / 0.85), transparent);
+    animation: aurora-1 28s ease-in-out infinite;
+  }
+  .aurora-blob-2 {
+    width: 38rem; height: 38rem; right: -8rem; top: 12%;
+    background: radial-gradient(closest-side, rgb(var(--c-aurora) / 0.9), transparent);
+    animation: aurora-2 34s ease-in-out infinite;
+  }
+  .aurora-blob-3 {
+    width: 36rem; height: 36rem; left: 24%; bottom: -16rem;
+    background: radial-gradient(closest-side, rgb(var(--c-aurora) / 0.8), transparent);
+    animation: aurora-3 40s ease-in-out infinite;
+  }
+
+  /* ── Tables ──────────────────────────────────────────────────────────────
+     Modern dense table: the header lives INSIDE the bordered card, tinted and
+     sticky; rows are compact and carry hierarchy in weight/colour, not padding. */
+  .tbl-head {
+    @apply sticky top-0 z-10 rounded-t-lg bg-surface-2/70 px-4 py-2.5
+           text-micro uppercase text-fg-dim backdrop-blur-sm;
+  }
+  .tbl-row {
+    @apply px-4 py-2 transition-colors duration-fast hover:bg-surface-2/60;
+  }
+  .tbl-sort {
+    @apply -mx-1 inline-flex items-center gap-1 rounded px-1 transition-colors hover:text-fg-mid;
+  }
+
+  /* Chat's wireframe veil — keeps the centre reading column on solid canvas so
+     text never lands on geometry. Token-based so it is the theme's own bg at
+     the centre and fades to transparent, rather than the hardcoded near-black
+     it used to be (which painted a dark ellipse once the canvas went light). */
+  .chat-veil-empty {
+    background: radial-gradient(ellipse 64% 34% at 50% 42%,
+      rgb(var(--c-bg)) 0%, rgb(var(--c-bg)) 56%, rgb(var(--c-bg) / 0.82) 78%, transparent 100%);
+  }
+  .chat-veil-active {
+    background: radial-gradient(ellipse 38% 100% at 50% 50%,
+      rgb(var(--c-bg)) 0%, rgb(var(--c-bg) / 0.92) 60%, transparent 100%);
+  }
+  /* Settles the centre of the shell's depth corridor so the reading column sits
+     on calm canvas while the wireframe travels in the outer margins. Token-based,
+     so it is the theme's own bg — though the corridor itself is dark-only. */
+  .shell-veil {
+    background: radial-gradient(72% 60% at 50% 38%,
+      rgb(var(--c-bg) / 0.62) 0%, rgb(var(--c-bg) / 0.30) 46%, transparent 74%);
+  }
+  /* Lift on approach. Border and shadow only — a transform would nudge the grid
+     and make a row of tiles jitter as the pointer crosses it. */
+  .card-hover {
+    @apply transition-[border-color,box-shadow,background-color] duration-normal ease-out
+           hover:border-line-strong hover:bg-surface-2 hover:shadow-e2;
+  }
+
+  /* ── Glass & depth ───────────────────────────────────────────────────────
+     Frosted surfaces for the chrome and the hero moments. The opaque rule is the
+     fallback; the frosted treatment layers on only where backdrop-filter is
+     supported, so a no-blur browser still gets a legible plane. Glass alpha is
+     per-theme so text on the frost stays AA. `.glass` carries its own border +
+     shadow (cards, composer, menus); `.glass-chrome` is bg+blur only, for the
+     sidebar/top bar that keep their own directional hairline. */
+  .glass {
+    background: rgb(var(--c-surface-1) / 0.94);
+    border: 1px solid rgb(var(--c-fg-hi) / 0.07);
+    box-shadow: var(--e1);
+  }
+  .glass-chrome {
+    background: rgb(var(--c-surface-1) / 0.85);
+  }
+  @supports ((-webkit-backdrop-filter: blur(2px)) or (backdrop-filter: blur(2px))) {
+    .glass {
+      background: rgb(var(--c-surface-1) / var(--glass-alpha));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    }
+    .glass-chrome {
+      background: rgb(var(--c-surface-1) / var(--glass-alpha));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(130%);
+      backdrop-filter: blur(var(--glass-blur)) saturate(130%);
+    }
+  }
+  /* Hero tile: lifts and picks up an accent glow on approach. Pair with `glass`.
+     Inert on elements that carry their own inline transform (e.g. TiltCard). */
+  .card-lift {
+    @apply transition-[transform,box-shadow] duration-normal ease-out;
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--e3), var(--glow-accent);
+  }
+  /* Empty-state prompt as a premium action card. Pair with `glass` in markup. */
+  .starter-card {
+    @apply flex items-center gap-3.5 rounded-xl px-4 py-3.5 text-left
+           transition-[transform,box-shadow,border-color] duration-normal ease-out
+           hover:-translate-y-0.5 hover:border-accent/40;
+  }
+  .starter-card:hover {
+    box-shadow: var(--e2), var(--glow-accent);
+  }
+
+  /* ── Type roles ──────────────────────────────────────────────────────── */
+  .section-title {
+    @apply mb-3 block text-micro uppercase text-fg-low;
+  }
   .eyebrow {
-    @apply font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-low;
+    @apply text-micro uppercase text-fg-low;
   }
   .stamp {
-    @apply font-mono text-[11px] text-fg-low tracking-wide;
+    @apply font-mono text-micro text-fg-low;
   }
+  /* Data columns must not reflow as digits change. */
+  .tabular { font-variant-numeric: tabular-nums; }
 
-  /* Buttons */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5
-           font-sans font-semibold text-sm
-           transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed
-           active:scale-[0.98];
+  /* ── Provenance gutter ───────────────────────────────────────────────────
+     The signature device. A 2px margin rule stating where a claim came from
+     and whether it can be trusted. Used on assistant turns, report sections,
+     evidence cards and document rows — nowhere else, and never in `accent`,
+     because these marks are close to the only colour in the interface. */
+  .gutter { @apply relative pl-5; }
+  .gutter::before {
+    content: "";
+    @apply absolute bottom-0.5 left-0 top-0.5 w-0.5 rounded-full;
   }
-  .btn:focus-visible {
-    outline: 2px solid rgba(59, 130, 246, 0.8);
-    outline-offset: 2px;
+  .gutter-ok::before { @apply bg-ok; }
+  .gutter-caution::before { @apply bg-caution; }
+  .gutter-critical::before { @apply bg-critical; }
+  .gutter-idle::before { @apply bg-line-strong; }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────────
+     Hover changes colour and elevation, never geometry — a button that grows
+     on hover nudges its neighbours and reads as unstable. */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-md px-3.5 py-2
+           text-body font-medium
+           transition-[background-color,border-color,color,box-shadow] duration-fast ease-out
+           disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn;
-    background: #FCD535;
-    color: #181a20;
+    @apply btn bg-gradient-to-b from-accent to-accent-dim text-bg shadow-e1
+           hover:shadow-[var(--glow-accent),var(--e1)]
+           disabled:bg-none disabled:bg-surface-3 disabled:text-fg-dim disabled:shadow-none;
   }
-  .btn-primary:hover { background: #f0b90b; }
-  .btn-primary:disabled { background: #3a3a1f; color: #707a8a; }
   .btn-ghost {
-    @apply btn border border-line bg-surface-2 text-fg-mid hover:border-line-strong hover:bg-surface-3 hover:text-fg-hi;
+    @apply btn border border-line bg-surface-2 text-fg-mid
+           hover:border-line-strong hover:bg-surface-3 hover:text-fg-hi;
   }
   .btn-secondary {
-    @apply btn border border-line bg-surface-1 text-fg-mid hover:border-line-strong hover:bg-surface-2 hover:text-fg-hi;
+    @apply btn border border-transparent bg-transparent text-fg-low
+           hover:bg-surface-2 hover:text-fg-hi;
+  }
+  /* Login submit only. The gradient runs darker than the accent because the
+     label is white: #4C6BE0 is the lightest blue white text clears 4.5:1 on,
+     so the ramp starts there rather than at the brighter brand blue. */
+  .btn-hero {
+    @apply btn bg-gradient-to-b from-[rgb(var(--c-hero-from))] to-[rgb(var(--c-hero-to))] text-white shadow-e2
+           hover:from-[rgb(var(--c-hero-from-hover))] hover:to-[rgb(var(--c-hero-to-hover))]
+           disabled:from-surface-3 disabled:to-surface-3 disabled:text-fg-dim disabled:shadow-none;
   }
 
-  /* Form fields */
+  /* ── Icon-led input ──────────────────────────────────────────────────────
+     The wrapper carries the border and the focus treatment; the <input>
+     inside is bare, so the ring wraps the whole control rather than a box
+     floating inside another box. */
+  .field-group {
+    @apply flex items-stretch overflow-hidden rounded-md border border-line bg-surface-2
+           transition-colors duration-fast
+           hover:border-line-strong
+           focus-within:border-accent/70 focus-within:bg-surface-3;
+  }
+  .field-group > :is(input, textarea) {
+    @apply min-w-0 flex-1 bg-transparent px-3 py-2 text-body text-fg-hi
+           placeholder:text-fg-dim;
+  }
+  .field-group > :is(input, textarea):focus-visible {
+    outline: none;
+  }
+  /* The chat composer is a control made of several elements — a textarea, a
+     send button, padding. The focus indicator belongs to the whole thing, so
+     the inner textarea's own ring is suppressed and the wrapper carries it.
+     Without this you get two outlines: the wrapper border and the textarea's. */
+  .composer {
+    @apply flex items-start gap-2 rounded-xl p-2 pl-4
+           transition-[border-color,box-shadow] duration-fast;
+  }
+  .composer:focus-within {
+    @apply border-accent/60;
+    box-shadow: var(--e2), 0 0 0 3px rgb(var(--c-accent) / 0.16), var(--glow-accent);
+  }
+  .composer textarea:focus-visible {
+    outline: none;
+  }
+
+  .field-affix {
+    @apply flex w-10 shrink-0 items-center justify-center text-fg-dim;
+  }
+
+  /* ── Form fields ─────────────────────────────────────────────────────── */
   .field {
-    @apply w-full rounded-md border border-line bg-surface-1 px-3.5 py-2.5 text-sm
-           text-fg-hi placeholder:text-fg-dim
-           focus:border-info/60 focus:bg-surface-2
-           outline-none transition-all duration-fast;
+    @apply w-full rounded-md border border-line bg-surface-2 px-3 py-2 text-body
+           text-fg-hi outline-none transition-[border-color,background-color,box-shadow] duration-fast
+           placeholder:text-fg-dim hover:border-line-strong
+           focus:border-accent/70 focus:bg-surface-3;
   }
+  /* The composer has carried a soft focus halo since it was built and plain
+     fields never did, so the two read as different systems. One treatment. */
   .field:focus {
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 3px rgb(var(--c-accent) / 0.12);
   }
 
-  /* Chips */
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-line
-           bg-surface-1 px-3 py-1 text-xs text-fg-mid transition-all duration-fast;
+  /* ── Listbox ─────────────────────────────────────────────────────────────
+     `.field-trigger` is a .field that happens to be a button; `.select-inline`
+     is the table-cell form — plain type until you approach it, so a row of
+     them reads as a ledger rather than as a wall of form controls. */
+  .field-trigger {
+    @apply field flex cursor-pointer items-center gap-2 text-left;
   }
-  .chip:hover { @apply border-line-strong bg-surface-2 text-fg-hi; }
+  .select-inline {
+    @apply -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1.5 rounded-md
+           border border-transparent px-2 py-1.5 text-left text-body text-fg-hi
+           transition-colors duration-fast
+           hover:border-line-strong hover:bg-surface-2
+           data-[open=true]:border-accent/60 data-[open=true]:bg-surface-2;
+  }
+
+  .menu {
+    @apply surface-elevated max-h-72 w-max min-w-full max-w-[min(22rem,90vw)]
+           overflow-y-auto overscroll-contain p-1 shadow-e3;
+  }
+  .menu-item {
+    @apply flex w-full items-start gap-2.5 rounded-sm px-2.5 py-2 text-left
+           transition-colors duration-fast
+           data-[active=true]:bg-surface-3;
+  }
+
+  /* ── Chips ───────────────────────────────────────────────────────────── */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-sm border border-line bg-surface-2
+           px-2.5 py-1 text-label text-fg-low transition-colors duration-fast
+           hover:border-line-strong hover:text-fg-hi;
+  }
   .chip-active {
     @apply border-accent/50 bg-accent-surface text-fg-hi;
   }
 
-  /* Status LED */
-  .status-led {
-    @apply relative inline-flex h-2 w-2 rounded-full;
-  }
-  .status-led::after {
-    content: "";
-    @apply absolute inset-0 rounded-full;
-    animation: pulseGlow 2s ease-in-out infinite;
-  }
-  .status-led-ok { @apply bg-ok; box-shadow: 0 0 8px #0ecb81; }
-  .status-led-caution { @apply bg-caution; box-shadow: 0 0 8px #f0b90b; }
-  .status-led-critical { @apply bg-critical; box-shadow: 0 0 8px #f6465d; }
-
-  /* Shimmer loading */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.05) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
-  }
+  /* ── Status dot ──────────────────────────────────────────────────────── */
+  .status-led { @apply inline-flex h-1.5 w-1.5 shrink-0 rounded-full; }
+  .status-led-ok { @apply bg-ok; }
+  .status-led-caution { @apply bg-caution; }
+  .status-led-critical { @apply bg-critical; }
 }
 
+/* Aurora drift — slow, offset paths so the blobs never move in lockstep. */
+@keyframes aurora-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(7rem, 4rem) scale(1.15); }
+}
+@keyframes aurora-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-6rem, 6rem) scale(1.1); }
+}
+@keyframes aurora-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5rem, -5rem) scale(1.12); }
+}
+
+/* Motion is a courtesy, not a requirement. CSS transitions are neutralised
+   here; framer-motion variants gate on useReducedMotion() in the components. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
-}
-
-/* Light theme — disabled for trading-dark mode; kept for compatibility */
-[data-theme="light"] {
-  color-scheme: light;
-  --tw-bg: #ffffff;
-  --tw-fg-hi: #181a20;
-  --tw-fg-mid: #474d57;
-  --tw-fg-low: #707a8a;
-  --tw-surface-1: #ffffff;
-  --tw-surface-2: #fafafa;
-  --tw-surface-3: #f5f5f5;
-  --tw-line: #eaecef;
-  --tw-line-strong: #cdd1d6;
-  --tw-accent: #FCD535;
-  --tw-accent-dim: #f0b90b;
-  --tw-ok: #0ecb81;
-  --tw-caution: #f0b90b;
-  --tw-critical: #f6465d;
 }

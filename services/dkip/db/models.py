@@ -37,6 +37,14 @@ class Collection(Base):
     description: Mapped[str] = mapped_column(Text, default="")
 
 
+class DocumentKind(Base):
+    __tablename__ = "document_kinds"
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    slug: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
@@ -132,6 +140,13 @@ class ChatSession(Base):
     org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String, default="New session")
+    # the report the conversation is currently working on, so "make it shorter"
+    # knows what "it" is after a reload
+    last_report_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Rolling summary of the turns that have aged out of the rewriter's window,
+    # so a long conversation costs the same per turn as a short one.
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summarised_upto: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -141,6 +156,9 @@ class ChatMessage(Base):
     session_id: Mapped[str] = mapped_column(ForeignKey("chat_sessions.id"))
     role: Mapped[str] = mapped_column(String)  # user|assistant
     content: Mapped[str] = mapped_column(Text)
+    # what card this turn rendered: {kind: answer|plan|report|text, plan, report_id,
+    # citations, evidence} — replayed verbatim when a session is reopened
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -194,8 +212,16 @@ class Report(Base):
     __tablename__ = "reports"
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
-    template_id: Mapped[str] = mapped_column(ForeignKey("report_templates.id"))
+    # nullable: reports are normally generated from a conversation-built outline,
+    # not from a stored template
+    template_id: Mapped[str | None] = mapped_column(
+        ForeignKey("report_templates.id"), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
     title: Mapped[str] = mapped_column(String, default="")
+    # Highest clearance among the documents this report quotes. A report is a
+    # derived copy of its sources, so it has to be gated like them — otherwise
+    # confidential text becomes readable simply by having been summarised.
+    min_clearance: Mapped[int] = mapped_column(Integer, default=1)
     scope: Mapped[dict] = mapped_column(JSON, default=dict)
     draft: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String, default="draft")

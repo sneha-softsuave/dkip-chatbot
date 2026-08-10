@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "../lib/api";
 import type { SourceResolved } from "../lib/types";
-import { GlassPanel } from "./GlassPanel";
+import { Modal } from "./Modal";
 import { Badge, Spinner, cx } from "./ui";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -15,7 +15,7 @@ export interface SourceTarget {
   chunkId: string;
 }
 
-export function SourceViewer({ target, onClose }: { target: SourceTarget; onClose: () => void }) {
+export function SourceViewer({ target, onClose }: { target: SourceTarget | null; onClose: () => void }) {
   const [meta, setMeta] = useState<SourceResolved | null>(null);
   const [error, setError] = useState("");
   const [rendering, setRendering] = useState(true);
@@ -24,6 +24,7 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
   const [highlight, setHighlight] = useState<{ left: number; top: number; w: number; h: number } | null>(null);
 
   useEffect(() => {
+    if (!target) return;
     let cancelled = false;
     setMeta(null);
     setError("");
@@ -35,7 +36,7 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
     return () => {
       cancelled = true;
     };
-  }, [target.chunkId]);
+  }, [target?.chunkId]);
 
   useEffect(() => {
     if (!meta) return;
@@ -74,31 +75,17 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
   }, [meta]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.96, y: 16 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: 16 }}
-        transition={{ duration: 0.25 }}
-        className="flex h-[88vh] w-full max-w-6xl gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal open={!!target} onClose={onClose} label="Source viewer" panelClassName="flex h-[88vh] w-full max-w-6xl gap-4">
         {/* Document render */}
-        <GlassPanel className="flex min-w-0 flex-1 flex-col p-4" hover={false}>
-          <div className="mb-3 flex items-center justify-between">
+        <div className="surface-elevated flex min-w-0 flex-1 flex-col p-5">
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="eyebrow text-accent">Source viewer</span>
-              {meta?.superseded && <Badge tone="caution">superseded revision</Badge>}
+              <span className="section-title mb-0">Source</span>
+              {meta?.superseded && <Badge tone="caution">newer version exists</Badge>}
             </div>
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onClose} className="btn-ghost !p-2" aria-label="Close">
+            <button onClick={onClose} className="btn-ghost !p-2" aria-label="Close">
               <X className="h-4 w-4" />
-            </motion.button>
+            </button>
           </div>
           <div ref={containerRef} className="relative flex-1 overflow-auto rounded-lg border border-line bg-surface-1 p-4">
             {rendering && (
@@ -112,11 +99,11 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="pointer-events-none absolute border-2 border-accent bg-accent/15"
+                  className="pointer-events-none absolute border-2 border-ok bg-ok/15"
                   style={{ left: highlight.left, top: highlight.top, width: highlight.w, height: highlight.h }}
                 >
-                  <span className="absolute -top-5 left-0 rounded bg-accent px-1.5 font-mono text-[10px] text-bg">
-                    cited passage
+                  <span className="absolute -top-5 left-0 rounded-sm bg-ok px-1.5 text-micro font-medium text-bg">
+                    quoted here
                   </span>
                 </motion.div>
               )}
@@ -124,49 +111,45 @@ export function SourceViewer({ target, onClose }: { target: SourceTarget; onClos
             {error && (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-fg-mid">
                 <FileWarning className="h-8 w-8 text-caution" />
-                <span className="text-sm">{error}</span>
+                <span className="text-body">{error}</span>
               </div>
             )}
           </div>
-        </GlassPanel>
+        </div>
 
         {/* Passage + anchor metadata */}
-        <GlassPanel className="flex w-[340px] shrink-0 flex-col p-4" hover={false}>
+        <div className="surface-elevated flex w-[340px] shrink-0 flex-col p-5">
           {!meta ? (
             <div className="flex flex-1 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-fg-low" />
             </div>
           ) : (
             <>
-              <span className="eyebrow text-accent">Citation anchor</span>
-              <div className="mt-3 space-y-2 font-mono text-xs">
-                <Row k="DOC" v={meta.doc_code} />
-                <Row k="TITLE" v={meta.title} />
-                <Row k="SECTION" v={`§ ${meta.section || "-"}`} />
-                <Row k="PAGE" v={`${meta.page_start}${meta.page_end !== meta.page_start ? `–${meta.page_end}` : ""}`} />
-                <Row k="REVISION" v={meta.revision} />
-                <Row k="CLASS" v={meta.classification} />
-                {meta.ocr_confidence != null && <Row k="OCR" v={`${Math.round(meta.ocr_confidence * 100)}% conf`} />}
+              <span className="section-title">Where this came from</span>
+              <div className="space-y-2">
+                <Row k="Document" v={meta.title} />
+                <Row k="Reference" v={meta.doc_code} />
+                <Row k="Section" v={meta.section ? `§ ${meta.section}` : "—"} />
+                <Row k="Page" v={`${meta.page_start}${meta.page_end !== meta.page_start ? `–${meta.page_end}` : ""}`} />
               </div>
               <div className="mt-4 flex-1 overflow-auto">
-                <span className="eyebrow text-accent">Supporting passage</span>
-                <p className="mt-2 whitespace-pre-wrap rounded-lg border border-line bg-surface-1 p-3 text-[13px] leading-6 text-fg-hi">
+                <span className="section-title">What it says</span>
+                <p className="whitespace-pre-wrap rounded-md border border-line bg-surface-1 p-3 text-body leading-6 text-fg-hi">
                   {meta.text}
                 </p>
               </div>
             </>
           )}
-        </GlassPanel>
-      </motion.div>
-    </motion.div>
+        </div>
+    </Modal>
   );
 }
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-line/60 pb-1.5">
-      <span className="text-fg-dim">{k}</span>
-      <span className={cx("text-right text-fg-hi", k === "DOC" && "font-semibold text-accent")}>{v}</span>
+      <span className="shrink-0 text-label text-fg-dim">{k}</span>
+      <span className={cx("text-right text-body text-fg-hi", k === "Document" && "font-medium")}>{v}</span>
     </div>
   );
 }

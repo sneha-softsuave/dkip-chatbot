@@ -3,13 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
+    <!-- No color-scheme meta: a static value contradicts the theme below the
+         moment it is not dark. src/index.css drives it from --color-scheme. -->
     <title>DKIP — Defense Knowledge Intelligence Platform</title>
     <script>
-      // Apply saved theme before first paint to avoid FOUC
-      (function() {
+      // Stamp the theme before first paint, so there is no flash of the wrong
+      // one. A stored choice wins; with none, follow the OS. Default is dark.
+      (function () {
         var t = localStorage.getItem("dkip_theme");
-        if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.setAttribute("data-theme", t);
       })();
     </script>
   </head>

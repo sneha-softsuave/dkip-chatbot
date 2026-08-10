@@ -11,9 +11,9 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from dkip.api.bootstrap import init_stores, seed_identity
-from dkip.api.routers import (admin, audit, config, connectors, dashboards,
+from dkip.api.routers import (admin, audit, chat, config, connectors, dashboards,
                               documents, ingestion, orgs, query, reports,
-                              summarize)
+                              summarize, taxonomy)
 from dkip.api.routers import auth as auth_router
 from dkip.core.config import settings
 from dkip.gateway.factory import make_gateway
@@ -47,9 +47,12 @@ def create_app() -> FastAPI:
             "code": 422, "message": "validation error", "detail": exc.errors(),
             "request_id": request.headers.get("x-request-id", "")}})
 
-    for r in (auth_router.router, query.router, summarize.router, documents.router,
-              ingestion.router, reports.router, dashboards.router, audit.router,
-              config.router, admin.router, orgs.router, connectors.router):
+    # audit/dashboards/config stay mounted: the audit trail is still recorded and
+    # readable by an operator, the UI just no longer surfaces any of it.
+    for r in (auth_router.router, chat.router, query.router, summarize.router,
+              documents.router, ingestion.router, reports.router, dashboards.router,
+              audit.router, config.router, admin.router, orgs.router,
+              connectors.router, taxonomy.router):
         app.include_router(r, prefix=API)
 
     @app.get("/health")

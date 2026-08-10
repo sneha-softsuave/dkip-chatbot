@@ -1,154 +1,292 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  FileBarChart,
-  FileSearch,
+  FileText,
+  Files,
+  FolderTree,
   Gauge,
-  LayoutDashboard,
-  LogOut,
   MessagesSquare,
-  ScrollText,
+  PanelLeftClose,
+  PanelLeftOpen,
   Shield,
-  ShieldCheck,
   UploadCloud,
+  UsersRound,
+  X,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { NavLink } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
+import { CommandPalette, useCommandPalette } from "./CommandPalette";
+import { TopBar } from "./TopBar";
+import { cx } from "./ui";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { GlassPanel } from "./GlassPanel";
-import { Badge, StatusLed, cx } from "./ui";
+import { useTheme } from "../lib/theme";
+import type { ChatSessionMeta } from "../lib/types";
 
-const NAV_GENERAL = [
-  { to: "/ask", label: "Ask", icon: MessagesSquare },
-  { to: "/sources", label: "Library", icon: FileSearch },
-  { to: "/summarize", label: "Summarize", icon: ScrollText },
-  { to: "/reports", label: "Reports", icon: FileBarChart },
-  { to: "/dashboards", label: "Fleet", icon: LayoutDashboard },
+// The sign-in's wireframe corridor, reused as the whole shell's backdrop so the
+// interior sits in the same lit space as the threshold. Lazy — it pulls in three
+// — and dark-only, since the additive geometry has nothing to add on a light
+// canvas. Chat owns its own tuned scene, so the shell layer stands down there to
+// keep exactly one WebGL context per route.
+const SignatureScene = lazy(() => import("./SignatureScene"));
+
+const NAV = [
+  { to: "/chat", label: "Chat", icon: MessagesSquare },
+  { to: "/documents", label: "Documents", icon: Files },
+  { to: "/reports", label: "Reports", icon: FileText },
 ] as const;
 
-const NAV_ADMIN = [
-  { to: "/ingestion", label: "Ingestion", icon: UploadCloud },
-  { to: "/audit", label: "Audit", icon: ShieldCheck },
-  { to: "/admin", label: "Admin", icon: Shield },
-  { to: "/settings", label: "Settings", icon: Gauge },
-] as const;
-
-function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: React.ElementType }) {
+function NavItem({
+  to,
+  label,
+  icon: Icon,
+  collapsed,
+  end,
+}: {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  collapsed: boolean;
+  end?: boolean;
+}) {
   return (
     <NavLink
       to={to}
+      end={end}
+      title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cx(
-          "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-fast",
+          "group flex h-9 items-center rounded-md text-body transition-colors duration-fast",
+          collapsed ? "justify-center px-0" : "gap-3 px-3",
           isActive
-            ? "bg-accent text-bg"
-            : "text-fg-low hover:bg-surface-3 hover:text-fg-hi",
+            ? "bg-accent/12 font-medium text-accent"
+            : "text-fg-low hover:bg-surface-2 hover:text-fg-hi",
         )
       }
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-      {label}
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+      {!collapsed && <span className="truncate">{label}</span>}
     </NavLink>
   );
 }
 
-export function Frame({ children }: { children: React.ReactNode }) {
-  const { me, logout } = useAuth();
-  const health = useQuery({
-    queryKey: ["health"],
-    queryFn: () => api.get("/health"),
-    refetchInterval: 15000,
+/**
+ * Group heading. Collapsed there is no room for a word, so the group is marked
+ * by a hairline instead — the grouping survives, the label doesn't.
+ */
+function NavGroup({ label, collapsed }: { label: string; collapsed: boolean }) {
+  if (collapsed) return <div className="mx-auto my-2 h-px w-6 bg-line" />;
+  return <div className="px-3 pb-1 pt-5 text-micro uppercase text-fg-dim">{label}</div>;
+}
+
+/** Past conversations. The list endpoint has always existed; nothing called it. */
+function RecentChats({ collapsed }: { collapsed: boolean }) {
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const sessions = useQuery<ChatSessionMeta[]>({
+    queryKey: ["chat-sessions"],
+    queryFn: () => api.get("/chat/sessions"),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.del(`/chat/sessions/${id}`),
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: ["chat-sessions"] });
+      if (pathname === `/chat/${id}`) navigate("/chat");
+    },
   });
 
-  const provider = health.data?.checks?.provider;
-  const storesOk = health.data?.status === "ok";
+  // Only conversations that got a title are worth listing — an empty session is
+  // created on every visit to /chat, and listing those would be noise. The list
+  // scrolls now, so the cap is generous rather than however many happened to fit.
+  const named = (sessions.data ?? []).filter((s) => s.title && s.title !== "New chat").slice(0, 20);
+  if (!named.length) return null;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-bg">
-      <div className="flex min-h-0 flex-1 gap-3 p-3">
-        {/* Flat dark sidebar */}
-        <motion.nav
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-          className="surface-card flex w-[220px] shrink-0 flex-col"
-        >
-          <div className="flex h-16 items-center gap-3 border-b border-line px-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-bg shadow-glow-sm">
-              <Shield className="h-5 w-5" strokeWidth={1.75} />
-            </div>
-            <div className="leading-tight">
-              <div className="font-sans text-sm font-bold tracking-wide text-fg-hi">DKIP</div>
-              <div className="text-[9px] uppercase tracking-widest text-fg-low">Defense Intel</div>
-            </div>
-          </div>
-
-          <div className="flex flex-1 flex-col gap-1 overflow-auto p-3">
-            <div className="mb-2 px-3 pt-2 font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-fg-dim">Operations</div>
-            {NAV_GENERAL.map((n) => (
-              <NavItem key={n.to} {...n} />
-            ))}
-            {me?.role === "admin" && (
-              <>
-                <div className="mb-2 mt-4 px-3 pt-2 font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-fg-dim">Command</div>
-                {NAV_ADMIN.map((n) => (
-                  <NavItem key={n.to} {...n} />
-                ))}
-              </>
-            )}
-            {me?.role !== "admin" && <NavItem to="/settings" label="Settings" icon={Gauge} />}
-          </div>
-
-          <div className="border-t border-line p-3">
-            <div className="flex items-center gap-3 rounded-md bg-surface-1 p-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-3 font-mono text-xs font-bold text-accent">
-                {me?.name?.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-medium text-fg-hi">{me?.name}</div>
-                <div className="truncate text-[10px] text-fg-low">
-                  {me?.role} · CLR-{me?.clearance}
-                </div>
-              </div>
-              <button onClick={logout} className="btn-ghost !p-2" title="Sign out" aria-label="Sign out">
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </motion.nav>
-
-        {/* Main column */}
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          {/* Flat dark header */}
-          <motion.header
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
-            className="surface-card flex h-14 items-center justify-between px-5"
+    // The only scrolling region in the sidebar. It takes whatever height is left
+    // and scrolls inside it, so a long history never pushes the fixed
+    // destinations around and nothing has to be pinned to the bottom.
+    <div className="flex min-h-0 flex-1 flex-col">
+      <NavGroup label="Recent" collapsed={collapsed} />
+      <div className="flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-3 pb-3">
+      {named.map((s) => (
+        <div key={s.id} className="group relative">
+          <NavLink
+            to={`/chat/${s.id}`}
+            className={({ isActive }) =>
+              cx(
+                "flex h-8 items-center rounded-md pl-3 pr-8 text-body transition-colors duration-fast",
+                isActive ? "bg-surface-3 text-fg-hi" : "text-fg-low hover:bg-surface-2 hover:text-fg-hi",
+              )
+            }
           >
-            <div className="flex items-center gap-3">
-              <Badge tone="signal">
-                <StatusLed tone={provider ? "ok" : "idle"} />
-                {provider ? `${provider.active ?? provider.configured}` : "connecting"}
-              </Badge>
-              <span className="stamp hidden text-fg-dim sm:inline">
-                {provider?.gen_model ?? ""}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <GlassPanel className="flex items-center gap-2 px-3 py-1.5" hover={false} elevated>
-                <StatusLed tone={storesOk ? "ok" : "caution"} />
-                <span className="stamp text-fg-mid">{storesOk ? "Systems nominal" : "Systems degraded"}</span>
-              </GlassPanel>
-            </div>
-          </motion.header>
-
-          <main className="min-h-0 flex-1 overflow-auto rounded-xl bg-bg p-4">{children}</main>
+            <span className="truncate">{s.title}</span>
+          </NavLink>
+          <button
+            onClick={() => remove.mutate(s.id)}
+            title={`Delete ${s.title}`}
+            aria-label={`Delete ${s.title}`}
+            className={cx(
+              "absolute right-1 top-1/2 -translate-y-1/2 rounded-sm p-1 text-fg-dim opacity-0 transition-opacity",
+              "hover:text-critical focus-visible:opacity-100 group-hover:opacity-100",
+            )}
+          >
+            <X className="h-3 w-3" />
+          </button>
         </div>
+      ))}
+      </div>
+    </div>
+  );
+}
+
+export function Frame({ children }: { children: React.ReactNode }) {
+  const { me } = useAuth();
+  const { pathname } = useLocation();
+  const still = useReducedMotion();
+  const theme = useTheme();
+  // The wireframe corridor is a DARK-theme device — on white the hard lines read
+  // as scattered boxes, so light gets a soft gradient-mesh glow instead (below).
+  // Chat brings its own scene; everywhere else the shell provides the depth.
+  const showCorridor = theme === "dark" && !pathname.startsWith("/chat");
+  const palette = useCommandPalette();
+  const mainRef = useRef<HTMLElement>(null);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("dkip_nav_collapsed") === "1");
+
+  function toggleNav() {
+    setCollapsed((c) => {
+      localStorage.setItem("dkip_nav_collapsed", c ? "0" : "1");
+      return !c;
+    });
+  }
+
+  // Move focus to the content region on navigation so screen-reader and
+  // keyboard users land on the new page instead of at the top of the sidebar.
+  useEffect(() => {
+    mainRef.current?.focus({ preventScroll: true });
+  }, [pathname]);
+
+  return (
+    <div className="relative flex h-full overflow-hidden bg-bg">
+      {/* Soft luminous depth behind the whole shell, BOTH themes — slow drifting
+          blurred accent blobs (the moving "3D" that reads premium on white, where
+          a wireframe would look like scattered lines). The faint grid and the
+          WebGL corridor stay DARK-only; frosted chrome + card gaps let it through. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="aurora-blob aurora-blob-1" />
+        <div className="aurora-blob aurora-blob-2" />
+        <div className="aurora-blob aurora-blob-3" />
+      </div>
+      {theme === "dark" && (
+        <div className="ambient-grid pointer-events-none absolute inset-0" aria-hidden />
+      )}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-accent focus:px-4 focus:py-2 focus:text-body focus:font-medium focus:text-bg"
+      >
+        Skip to content
+      </a>
+
+      <motion.nav
+        initial={false}
+        animate={{ width: collapsed ? 60 : 232 }}
+        transition={{ duration: still ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-chrome relative z-10 flex shrink-0 flex-col border-r border-line"
+        aria-label="Main"
+      >
+        <div
+          className={cx(
+            "flex h-14 shrink-0 items-center border-b border-line",
+            collapsed ? "justify-center px-0" : "gap-2.5 px-4",
+          )}
+        >
+          {/* The sign-in's glowing crest, at nav scale — the one spot of accent
+              in the chrome, so the brand carries the same signal as the login. */}
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-accent/25 bg-accent-surface text-accent shadow-glow">
+            <Shield className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </div>
+          {!collapsed && (
+            <>
+              <span className="min-w-0 flex-1 truncate text-body font-semibold tracking-tight text-fg-hi">
+                DKIP
+              </span>
+              <button
+                onClick={toggleNav}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                className="rounded-md p-1.5 text-fg-dim transition-colors duration-fast hover:bg-surface-2 hover:text-fg-hi"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </>
+          )}
+        </div>
+
+        {collapsed && (
+          <button
+            onClick={toggleNav}
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+            className="mx-auto mt-3 rounded-md p-1.5 text-fg-dim transition-colors duration-fast hover:bg-surface-2 hover:text-fg-hi"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        )}
+
+        {/* Everything is top-aligned in labelled groups. The admin destinations
+            used to be pinned to the bottom with `mt-auto`, which opened a gap in
+            the middle of the sidebar whose size depended on how many past
+            conversations you happened to have — and left the group unlabelled,
+            so its only meaning was "down there". */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className={cx("flex flex-col gap-0.5 pt-3", collapsed ? "px-2" : "px-3")}>
+            {NAV.map((n) => (
+              <NavItem key={n.to} {...n} collapsed={collapsed} end={n.to === "/chat"} />
+            ))}
+          </div>
+
+          {me?.role === "admin" && (
+            <>
+              <NavGroup label="Manage" collapsed={collapsed} />
+              <div className={cx("flex flex-col gap-0.5", collapsed ? "px-2" : "px-3")}>
+                <NavItem to="/knowledge" label="Knowledge base" icon={UploadCloud} collapsed={collapsed} />
+                <NavItem to="/admin" label="Admin console" icon={Gauge} collapsed={collapsed} />
+                <NavItem to="/people" label="People" icon={UsersRound} collapsed={collapsed} />
+                <NavItem to="/categories" label="Categories" icon={FolderTree} collapsed={collapsed} />
+              </div>
+            </>
+          )}
+
+          {!collapsed && <RecentChats collapsed={collapsed} />}
+        </div>
+      </motion.nav>
+
+      <div className="relative isolate flex min-w-0 flex-1 flex-col">
+        {/* The depth corridor, behind the transparent content. `isolate` keeps
+            the -z layer local so it sits above the shell canvas but under the
+            top bar and the page — the wireframe blooms through the gaps between
+            opaque cards, exactly like the ambient field it deepens. */}
+        {showCorridor && (
+          <Suspense fallback={null}>
+            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+              <SignatureScene className="h-full w-full" spread={2.4} intensity={0.42} />
+              <div className="shell-veil absolute inset-0" />
+            </div>
+          </Suspense>
+        )}
+        <TopBar onOpenSearch={() => palette.setOpen(true)} />
+        <main
+          id="main"
+          ref={mainRef}
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto outline-none"
+        >
+          {children}
+        </main>
       </div>
 
+      <CommandPalette open={palette.open} onClose={() => palette.setOpen(false)} />
     </div>
   );
 }

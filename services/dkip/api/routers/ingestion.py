@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from dkip.core.deps import Principal, require_role
 from dkip.db.base import get_db
-from dkip.db.models import Collection, IngestionFile, IngestionJob
+from dkip.db.models import IngestionFile, IngestionJob
 
 router = APIRouter(tags=["ingestion"])
 
@@ -35,11 +35,3 @@ def job_files(job_id: str, user: Principal = Depends(require_role("admin")),
             "files": [{"filename": f.filename, "status": f.status,
                        "error": f.error, "chunks": f.chunks, "ocr": f.ocr,
                        "doc_id": f.doc_id} for f in files]}
-
-
-@router.get("/collections")
-def collections(user: Principal = Depends(require_role("admin", "user")),
-                db: Session = Depends(get_db)):
-    rows = db.execute(select(Collection)).scalars().all()
-    return [{"slug": c.slug, "name": c.name, "description": c.description}
-            for c in rows]

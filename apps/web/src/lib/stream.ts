@@ -1,26 +1,33 @@
 import { api } from "./api";
-import type { QueryResult } from "./types";
+import type { TurnResult } from "./types";
 
-interface StreamHandlers {
-  onMeta?: (m: { rewritten_query: string; provider: string }) => void;
+export interface TurnStage {
+  stage: "understanding" | "retrieving" | "reading" | "writing";
+  count?: number;
+}
+
+interface TurnHandlers {
+  onMeta?: (m: { intent: string }) => void;
+  /** Progress frames from the pipeline, so the wait can say what it's doing. */
+  onStage?: (s: TurnStage) => void;
   onToken?: (t: string) => void;
-  onDone?: (r: QueryResult) => void;
+  onDone?: (r: TurnResult) => void;
   onError?: (e: string) => void;
 }
 
-/** POST /query/stream and parse the SSE event stream (§9.2). */
-export async function streamQuery(
-  body: { question: string; scope: unknown; session_id?: string },
-  h: StreamHandlers,
+/** POST /chat/turn and parse the SSE stream: meta → stage* → token* → done. */
+export async function streamTurn(
+  body: { session_id: string; message: string; scope?: unknown },
+  h: TurnHandlers,
 ) {
   try {
-    const res = await fetch(`${api.base}/query/stream`, {
+    const res = await fetch(`${api.base}/chat/turn`, {
       method: "POST",
       headers: api.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     if (!res.ok || !res.body) {
-      h.onError?.(`stream failed (${res.status})`);
+      h.onError?.(`the assistant is unavailable right now (${res.status})`);
       return;
     }
     const reader = res.body.getReader();
@@ -38,6 +45,7 @@ export async function streamQuery(
         if (!evMatch || !dataMatch) continue;
         const data = JSON.parse(dataMatch[1]);
         if (evMatch[1] === "meta") h.onMeta?.(data);
+        else if (evMatch[1] === "stage") h.onStage?.(data);
         else if (evMatch[1] === "token") h.onToken?.(data.t);
         else if (evMatch[1] === "done") h.onDone?.(data);
       }

@@ -46,6 +46,7 @@ export interface DocumentMeta {
   revision: string;
   classification: string;
   unit: string | null;
+  collection?: string | null;
   page_count: number;
   status: string;
   created_at: string;
@@ -64,6 +65,132 @@ export interface SourceResolved {
   text: string;
   superseded: boolean;
   ocr_confidence: number | null;
+}
+
+// ---- Reports ---------------------------------------------------------------
+
+export interface ReportSection {
+  key: string;
+  label: string;
+  prompt?: string;
+  value: string;
+  value_marked?: string;
+  citations: Citation[];
+  /** The sources couldn't support this section; it is shown as a gap, not prose. */
+  unsupported?: boolean;
+}
+
+export interface ChartPoint {
+  label: string;
+  value?: number;
+  serviceable?: number;
+  total?: number;
+  sid?: number;
+}
+
+export interface ReportChartSpec {
+  type: "bar" | "line" | "pie" | "table";
+  title: string;
+  /** "records" = from structured data, "documents" = figures read out of the text */
+  source: "records" | "documents";
+  unit?: string;
+  /** Colour the user asked for, applied over the default palette. */
+  color?: string;
+  series?: string[];
+  points?: ChartPoint[];
+  columns?: string[];
+  rows?: string[][];
+  citation_sids?: number[];
+}
+
+export interface ReportDraft {
+  id: string;
+  title: string;
+  sections: ReportSection[];
+  charts: ReportChartSpec[];
+  question?: string;
+  depth?: string;
+  session_id?: string | null;
+  created_at?: string;
+}
+
+export interface ReportListItem {
+  id: string;
+  title: string;
+  session_id: string | null;
+  created_at: string;
+  sections: number;
+  sources: number;
+}
+
+// ---- Chat ------------------------------------------------------------------
+
+export interface PlanOption {
+  id: string;
+  label: string;
+  recommended?: boolean;
+}
+
+export interface PlanQuestion {
+  id: string;
+  label: string;
+  options: PlanOption[];
+}
+
+export interface PlanSection {
+  key: string;
+  label: string;
+  prompt?: string;
+}
+
+export interface ReportPlan {
+  title: string;
+  sections: PlanSection[];
+  doc_candidates: { doc_id: string; doc_code: string; title: string }[];
+  questions: PlanQuestion[];
+}
+
+/** A page of a list endpoint. */
+export interface Paged<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** One choice offered by a `clarify` turn. `swatch` renders a colour dot. */
+export interface ClarifyOption {
+  label: string;
+  value: string;
+  swatch?: string;
+}
+
+/** The card a turn resolves to. Mirrors the `done` SSE payload. */
+export interface TurnResult {
+  kind: "answer" | "plan" | "report" | "text" | "error" | "clarify";
+  text?: string;
+  suggestions?: string[];
+  // answer
+  answer?: string | null;
+  answer_marked?: string | null;
+  grounded?: boolean;
+  citations?: Citation[];
+  evidence?: Evidence[];
+  // plan
+  plan?: ReportPlan;
+  // clarify — the agent needs one more detail before it can act
+  options?: ClarifyOption[];
+  // report
+  report_id?: string;
+  title?: string;
+  sections?: ReportSection[];
+  charts?: ReportChartSpec[];
+}
+
+export interface ChatSessionMeta {
+  id: string;
+  title: string;
+  created_at: string;
 }
 
 export interface Me {

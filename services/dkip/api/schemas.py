@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class Scope(BaseModel):
     collections: list[str] | None = None
+    doc_ids: list[str] | None = None   # restrict retrieval to specific documents
     doc_types: list[str] | None = None
     unit: str | None = None
     date_from: str | None = None
@@ -87,6 +88,24 @@ class CollectionIn(BaseModel):
     slug: str
     name: str
     description: str = ""
+
+
+class CollectionCreateIn(BaseModel):
+    name: str
+    description: str = ""
+
+
+class CollectionUpdateIn(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class DocKindCreateIn(BaseModel):
+    name: str
+
+
+class DocKindUpdateIn(BaseModel):
+    name: str | None = None
 
 
 class UserIn(BaseModel):

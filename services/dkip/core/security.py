@@ -34,10 +34,12 @@ def verify_password(password: str, stored: str) -> bool:
 # ---- local JWT --------------------------------------------------------------
 
 def issue_local_token(*, subject: str, role: str, clearance: int,
-                      name: str, org_id: str) -> str:
+                      name: str, org_id: str, uid: str | None = None) -> str:
     now = int(time.time())
+    # `uid` is the users.id row: audit events and anything owned by a user
+    # (chat sessions) need the FK, not just the login name.
     payload = {"sub": subject, "role": role, "clearance": clearance,
-               "name": name, "org_id": org_id, "iat": now,
+               "name": name, "org_id": org_id, "uid": uid, "iat": now,
                "exp": now + settings.JWT_TTL_SECONDS, "iss": "dkip-local"}
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
 

@@ -3,15 +3,15 @@ from __future__ import annotations
 
 from fastapi import (APIRouter, Depends, File, Form, HTTPException, Request,
                      UploadFile)
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from dkip.core import audit
 from dkip.core.config import settings
 from dkip.core.deps import Principal, current_user, require_role
 from dkip.db.base import get_db
-from dkip.db.models import (Chunk, Collection, Document, IngestionFile,
-                            IngestionJob)
+from dkip.db.models import (Chunk, Collection, Document, DocumentKind,
+                            IngestionFile, IngestionJob)
 from dkip.ingest.pipeline import remove_document
 from dkip.stores import objects
 
@@ -25,13 +25,20 @@ async def upload(request: Request, files: list[UploadFile] = File(...),
                  unit: str = Form(""), revision: str = Form("A"),
                  user: Principal = Depends(require_role("admin")),
                  db: Session = Depends(get_db)):
-    coll = db.execute(select(Collection).where(Collection.slug == collection)
-                      ).scalar_one_or_none()
+    coll = None
+    if collection:
+        coll = db.execute(select(Collection).where(Collection.slug == collection)
+                          ).scalar_one_or_none()
+        if not coll:
+            raise HTTPException(400, f"unknown knowledge area: {collection}")
+    if not db.execute(select(DocumentKind).where(DocumentKind.slug == doc_type)
+                      ).scalar_one_or_none():
+        raise HTTPException(400, f"unknown document kind: {doc_type}")
     job = IngestionJob(org_id=user.org_id, source="upload", trigger="manual")
     db.add(job); db.flush()
 
     from worker import celery_app  # local import: API image also has the task module
-    filenames = []
+    filenames, queued = [], []
     for f in files:
         data = await f.read()
         incoming_key = objects.put_bytes(settings.MINIO_BUCKET_RAW,
@@ -44,13 +51,30 @@ async def upload(request: Request, files: list[UploadFile] = File(...),
                 "classification": classification, "unit": unit or None,
                 "revision": revision, "title": f.filename, "created_by": user.user_id,
                 "doc_code": f.filename.rsplit(".", 1)[0].upper()}
-        celery_app.send_task("dkip.ingest.process_file",
-                             args=[row.id, incoming_key, user.org_id, meta])
+        queued.append((row.id, incoming_key, meta))
     db.commit()
+
+    # Dispatch only once the rows are committed, never inside the loop above.
+    # flush() assigns the id but keeps the row inside this transaction, so a
+    # worker that picked the task up first read it as missing, returned without
+    # touching it, and left the file "pending" forever — which in turn blocks
+    # _maybe_finalize, so the job never leaves "running" and the UI shows
+    # "processing" indefinitely. The first file dispatched lost this race most
+    # often, which is why bulk uploads stranded one file and processed the rest.
+    for file_id, incoming_key, meta in queued:
+        celery_app.send_task("dkip.ingest.process_file",
+                             args=[file_id, incoming_key, user.org_id, meta])
     audit.record(db, action="upload", actor_user_id=user.user_id,
                  actor_name=user.name, org_id=user.org_id, target_type="job",
                  target_id=job.id, request_meta={"files": len(files), "filenames": filenames})
     return {"job_id": job.id, "files": len(files), "status": "accepted"}
+
+
+_SORTS = {
+    "recent": Document.created_at.desc(),
+    "title": Document.title.asc(),
+    "pages": Document.page_count.desc(),
+}
 
 
 @router.get("/documents")
@@ -58,29 +82,51 @@ def list_documents(user: Principal = Depends(current_user),
                    db: Session = Depends(get_db), collection: str | None = None,
                    doc_type: str | None = None, unit: str | None = None,
                    classification: str | None = None,
-                   date_from: str | None = None, date_to: str | None = None):
-    q = select(Document).where(Document.clearance_required <= user.clearance)
+                   date_from: str | None = None, date_to: str | None = None,
+                   q: str | None = None, sort: str = "recent",
+                   limit: int = 25, offset: int = 0):
+    """A window over the corpus, with the total so the caller can paginate.
+
+    Search, filtering and sorting all happen here rather than in the browser:
+    the client only ever holds one page, so it cannot filter what it hasn't
+    fetched."""
+    limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+
+    stmt = select(Document).where(Document.clearance_required <= user.clearance)
     if doc_type:
-        q = q.where(Document.doc_type == doc_type)
+        stmt = stmt.where(Document.doc_type == doc_type)
     if unit:
-        q = q.where(Document.unit == unit)
+        stmt = stmt.where(Document.unit == unit)
     if classification:
-        q = q.where(Document.classification == classification)
+        stmt = stmt.where(Document.classification == classification)
     if date_from:
-        q = q.where(Document.effective_date >= date_from)
+        stmt = stmt.where(Document.effective_date >= date_from)
     if date_to:
-        q = q.where(Document.effective_date <= date_to)
-    docs = db.execute(q.order_by(Document.created_at.desc())).scalars().all()
+        stmt = stmt.where(Document.effective_date <= date_to)
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(Document.title.ilike(like), Document.doc_code.ilike(like)))
     if collection:
         coll = db.execute(select(Collection).where(Collection.slug == collection)
                           ).scalar_one_or_none()
-        docs = [d for d in docs if coll and d.collection_id == coll.id]
-    return [{"id": d.id, "doc_code": d.doc_code, "title": d.title,
-             "doc_type": d.doc_type, "revision": d.revision,
-             "classification": d.classification, "unit": d.unit,
-             "effective_date": d.effective_date,
-             "page_count": d.page_count, "status": d.status,
-             "created_at": d.created_at.isoformat()} for d in docs]
+        # An unknown slug matches nothing, rather than silently matching everything.
+        stmt = stmt.where(Document.collection_id == (coll.id if coll else None))
+
+    total = db.execute(select(func.count()).select_from(stmt.subquery())).scalar() or 0
+    rows = db.execute(
+        stmt.order_by(_SORTS.get(sort, _SORTS["recent"]))
+        .limit(limit).offset(offset)).scalars().all()
+    coll_by_id = dict(db.execute(select(Collection.id, Collection.slug)).all())
+
+    return {"items": [{"id": d.id, "doc_code": d.doc_code, "title": d.title,
+                       "doc_type": d.doc_type, "revision": d.revision,
+                       "classification": d.classification, "unit": d.unit,
+                       "collection": coll_by_id.get(d.collection_id),
+                       "effective_date": d.effective_date,
+                       "page_count": d.page_count, "status": d.status,
+                       "created_at": d.created_at.isoformat()} for d in rows],
+            "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/documents/{doc_id}")

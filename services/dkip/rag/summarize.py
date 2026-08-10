@@ -25,7 +25,9 @@ _FORMATS = {
 
 _SYSTEM = ("Summarize ONLY from the numbered SOURCES. Every material statement "
            "must carry its [Sn] marker. Do not add facts not in the sources. "
-           "Preserve procedure step order.")
+           "Preserve procedure step order. Format in Markdown: short paragraphs, "
+           "'-' bullets for lists, numbered steps for procedures, **bold** for key "
+           "figures and part numbers. Do not repeat the section heading.")
 
 
 def _evidence_from_chunks(chunks: list[Chunk], doc: Document) -> list[Evidence]:

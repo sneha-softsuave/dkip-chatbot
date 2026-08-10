@@ -1,145 +1,124 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileDown, FileText, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { FileText, MessageSquare } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import { GlassPanel } from "../components/GlassPanel";
-import { PageTransition, StaggerContainer, StaggerItem } from "../components/PageTransition";
-import { Badge, HoloButton, InputField, PageHeader, cx } from "../components/ui";
+import { EmptyState } from "../components/EmptyState";
+import { PageContainer } from "../components/PageContainer";
+import { Pagination } from "../components/Pagination";
+import { PageTransition } from "../components/PageTransition";
+import { Button, PageHeader, Skeleton, cx } from "../components/ui";
 import { api } from "../lib/api";
+import type { Paged, ReportListItem } from "../lib/types";
 
-interface Field {
-  key: string;
-  label: string;
-  value: string;
-  citations: { sid: number; doc: string; section: string; page: number }[];
-}
-interface Draft {
-  id: string;
-  title: string;
-  template: string;
-  fields: Field[];
+const GRID = "grid grid-cols-[minmax(0,1fr)_6rem_6rem_6rem] items-center gap-4";
+
+/** Smaller than the Documents page. Reports are grouped by recency, so a page
+ *  that runs long buries the "Today" bucket the reader came for. */
+const PAGE_SIZE = 15;
+
+/** Buckets by recency. A flat list of dates makes you read every row to find "the one from this morning". */
+function bucket(iso: string): "Today" | "This week" | "Earlier" {
+  const age = Date.now() - new Date(iso).getTime();
+  const day = 86_400_000;
+  if (age < day) return "Today";
+  if (age < 7 * day) return "This week";
+  return "Earlier";
 }
 
+/** Reports are written in the chat; this is only where you find them again. */
 export function Reports() {
-  const templates = useQuery({ queryKey: ["templates"], queryFn: () => api.get("/report-templates") });
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [topic, setTopic] = useState("fleet inspection and serviceability");
-  const [scopeUnit, setScopeUnit] = useState("");
+  const navigate = useNavigate();
+  const [offset, setOffset] = useState(0);
+  const reports = useQuery<Paged<ReportListItem>>({
+    queryKey: ["reports", offset],
+    queryFn: () => api.get(`/reports?limit=${PAGE_SIZE}&offset=${offset}`),
+    placeholderData: (prev) => prev,
+  });
+  const items = reports.data?.items ?? [];
+  const total = reports.data?.total ?? 0;
 
-  async function generate(templateId: string) {
-    setBusy(true);
-    try {
-      const scope: any = {};
-      if (scopeUnit) scope.unit = scopeUnit;
-      setDraft(await api.post("/reports", { template_id: templateId, topic, scope }));
-    } finally {
-      setBusy(false);
+  const groups = useMemo(() => {
+    const out: Record<string, ReportListItem[]> = {};
+    for (const r of [...items].sort((a, b) => b.created_at.localeCompare(a.created_at))) {
+      (out[bucket(r.created_at)] ??= []).push(r);
     }
-  }
-
-  async function save() {
-    if (!draft) return;
-    await api.patch(`/reports/${draft.id}`, { draft: { template: draft.template, fields: draft.fields } });
-  }
-
-  async function exportAs(fmt: "pdf" | "docx") {
-    if (!draft) return;
-    await save();
-    const res = await fetch(api.fileUrl(`/reports/${draft.id}/export?format=${fmt}`), {
-      method: "POST",
-      headers: api.authHeaders(),
-    });
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${draft.title}.${fmt}`;
-    a.click();
-  }
+    return out;
+  }, [items]);
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl">
-        <PageHeader title="Reports" sub="Generate structured, citable reports from templates" />
+      <PageContainer>
+        <PageHeader
+          icon={FileText}
+          eyebrow="Report library"
+          title="Reports"
+          sub="Reports you've generated, ready to open or export."
+        />
 
-        {!draft ? (
-          <div>
-            <div className="mb-4 flex gap-3">
-              <div className="flex-1">
-                <label className="mb-1.5 block text-xs font-medium text-fg-mid">Topic / focus area</label>
-                <InputField value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. fleet inspection and serviceability" />
+        {reports.isLoading ? (
+          <div className="surface-card divide-y divide-line">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className={cx(GRID, "px-4 py-3")}>
+                <Skeleton className="h-3.5 w-1/2" />
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-3 w-14" />
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-fg-mid">Scope unit</label>
-                <InputField className="w-40" value={scopeUnit} onChange={(e) => setScopeUnit(e.target.value)} placeholder="optional" />
-              </div>
-            </div>
-            <StaggerContainer className="grid gap-3 sm:grid-cols-2">
-              {(templates.data ?? []).map((t: { id: string; name: string; description: string; fields: unknown[] }) => (
-                <StaggerItem key={t.id}>
-                  <GlassPanel className="flex flex-col p-5" hover>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-surface">
-                      <FileText className="h-5 w-5 text-accent" />
-                    </div>
-                    <div className="mt-3 text-base font-semibold text-fg-hi">{t.name}</div>
-                    <p className="mt-1 flex-1 text-sm text-fg-mid">{t.description}</p>
-                    <div className="stamp mt-2 text-fg-low">{t.fields.length} cited fields</div>
-                    <HoloButton className="mt-4" onClick={() => generate(t.id)} disabled={busy}>
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate draft
-                    </HoloButton>
-                  </GlassPanel>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
+            ))}
+          </div>
+        ) : total === 0 ? (
+          <div className="surface-card">
+            <EmptyState
+              icon={FileText}
+              title="No reports yet"
+              body="Ask for one in the chat — “generate a report on fleet serviceability” — and it will appear here."
+              action={
+                <Button onClick={() => navigate("/chat")}>
+                  <MessageSquare className="h-4 w-4" aria-hidden />
+                  Go to chat
+                </Button>
+              }
+            />
           </div>
         ) : (
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <div className="text-lg font-semibold text-fg-hi">{draft.title}</div>
-                <div className="stamp text-fg-low">Draft · editable before export · classification marking applied</div>
-              </div>
-              <div className="flex gap-2">
-                <HoloButton variant="ghost" onClick={() => setDraft(null)}>
-                  Back
-                </HoloButton>
-                <HoloButton variant="ghost" onClick={() => exportAs("docx")}>
-                  <Download className="h-4 w-4" /> DOCX
-                </HoloButton>
-                <HoloButton onClick={() => exportAs("pdf")}>
-                  <FileDown className="h-4 w-4" /> PDF
-                </HoloButton>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {draft.fields.map((f, i) => (
-                <GlassPanel key={f.key} className="p-4" hover={false}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="eyebrow text-accent">{f.label}</span>
-                    <div className="flex gap-1">
-                      {f.citations?.map((c) => (
-                        <Badge key={c.sid} tone="signal">
-                          {c.sid} · {c.doc} p.{c.page}
-                        </Badge>
-                      ))}
-                    </div>
+          (["Today", "This week", "Earlier"] as const)
+            .filter((k) => groups[k]?.length)
+            // Column labels belong to the table, not to each group — repeating
+            // them above every bucket reads as a new table each time.
+            .map((k, groupIndex) => (
+              <section key={k} className="mb-4 last:mb-0">
+                <div className="surface-card divide-y divide-line">
+                  <div className={cx(GRID, "tbl-head")}>
+                    <span className="text-fg-low">{k}</span>
+                    <span className="text-right">{groupIndex === 0 ? "Sections" : ""}</span>
+                    <span className="text-right">{groupIndex === 0 ? "Sources" : ""}</span>
+                    <span className="text-right">{groupIndex === 0 ? "Created" : ""}</span>
                   </div>
-                  <textarea
-                    className="field min-h-[90px] resize-y leading-6"
-                    value={f.value}
-                    onChange={(e) => {
-                      const fields = [...draft.fields];
-                      fields[i] = { ...f, value: e.target.value };
-                      setDraft({ ...draft, fields });
-                    }}
-                  />
-                </GlassPanel>
-              ))}
-            </div>
-          </div>
+                  {groups[k].map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => navigate(`/reports/${r.id}`)}
+                      className={cx(
+                        GRID,
+                        "w-full px-4 py-2.5 text-left transition-colors duration-fast hover:bg-surface-2/60",
+                      )}
+                    >
+                      <span className="truncate text-body text-fg-hi">{r.title}</span>
+                      <span className="tabular text-right text-body text-fg-low">{r.sections}</span>
+                      <span className="tabular text-right text-body text-fg-low">{r.sources}</span>
+                      <span className="tabular whitespace-nowrap text-right text-body text-fg-low">
+                        {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))
         )}
-      </div>
+
+        <Pagination total={total} limit={PAGE_SIZE} offset={offset} onOffset={setOffset} />
+      </PageContainer>
     </PageTransition>
   );
 }

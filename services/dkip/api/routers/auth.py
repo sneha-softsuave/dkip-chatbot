@@ -26,7 +26,8 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(403, "account disabled")
     token = issue_local_token(subject=user.subject, role=user.role,
                               clearance=user.clearance_level,
-                              name=user.display_name, org_id=user.org_id)
+                              name=user.display_name, org_id=user.org_id,
+                              uid=user.id)
     audit.record(db, action="login", actor_user_id=user.id,
                  actor_name=user.display_name, org_id=user.org_id,
                  request_meta={"method": "local", "ip": request.client.host if request.client else ""})

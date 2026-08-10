@@ -56,6 +56,8 @@ def _filters(scope: dict, clearance: int, access_tags: list[str] | None = None) 
     f: list[dict] = [{"range": {"clearance_required": {"lte": clearance}}}]
     if scope.get("collections"):
         f.append({"terms": {"collection_id": scope["collections"]}})
+    if scope.get("doc_ids"):
+        f.append({"terms": {"document_id": scope["doc_ids"]}})
     if scope.get("doc_types"):
         f.append({"terms": {"doc_type": scope["doc_types"]}})
     if scope.get("unit"):

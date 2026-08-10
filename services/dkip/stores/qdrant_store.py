@@ -26,8 +26,9 @@ def ensure_collection() -> None:
             collection_name=name,
             vectors_config=qm.VectorParams(size=settings.embed_dim,
                                            distance=qm.Distance.COSINE))
-        for field in ("collection_id", "doc_type", "unit", "classification",
-                      "clearance_required", "superseded", "access_tags", "effective_date"):
+        for field in ("collection_id", "document_id", "doc_type", "unit",
+                      "classification", "clearance_required", "superseded",
+                      "access_tags", "effective_date"):
             client().create_payload_index(name, field,
                                           field_schema=qm.PayloadSchemaType.KEYWORD
                                           if field != "clearance_required"
@@ -58,6 +59,9 @@ def _filter(scope: dict, clearance: int, access_tags: list[str] | None = None) -
     if scope.get("collections"):
         must.append(qm.FieldCondition(key="collection_id",
                     match=qm.MatchAny(any=scope["collections"])))
+    if scope.get("doc_ids"):
+        must.append(qm.FieldCondition(key="document_id",
+                    match=qm.MatchAny(any=scope["doc_ids"])))
     if scope.get("doc_types"):
         must.append(qm.FieldCondition(key="doc_type",
                     match=qm.MatchAny(any=scope["doc_types"])))

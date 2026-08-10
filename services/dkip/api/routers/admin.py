@@ -3,14 +3,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from dkip.core import audit
 from dkip.core.deps import Principal, require_role
 from dkip.core.security import hash_password
 from dkip.db.base import get_db
-from dkip.db.models import User
+from dkip.db.models import (Answer, ChatMessage, ChatSession, Document, User)
 
 router = APIRouter(tags=["admin"])
 
@@ -75,3 +75,46 @@ def update_user(username: str, body: UserPatch, user: Principal = Depends(requir
                  target_id=username)
     return {"subject": u.subject, "role": u.role, "clearance": u.clearance_level,
             "disabled": bool(u.disabled_at)}
+
+
+@router.delete("/users/{username}", status_code=204)
+def delete_user(username: str, user: Principal = Depends(require_role("admin")),
+                db: Session = Depends(get_db)):
+    """Remove an account and everything private to it.
+
+    Disabling only blocks sign-in; the rows stay. This actually removes the
+    account, so it takes the conversations with it — a chat is private to the
+    person who had it, and leaving orphaned ones behind would be both a dangling
+    FK and a pile of unreachable transcripts.
+
+    The audit trail is deliberately untouched: `audit_events.actor_user_id` is a
+    plain column, not a foreign key, precisely so an append-only hash-chained log
+    survives the deletion of the actor. Rewriting it to tidy up would break the
+    chain, which is the one thing it exists to prevent."""
+    u = db.execute(select(User).where(User.subject == username)).scalar_one_or_none()
+    if not u:
+        raise HTTPException(404, "user not found")
+    if u.subject == user.subject:
+        raise HTTPException(400, "cannot delete the account you are signed in as")
+
+    sessions = db.execute(select(ChatSession).where(ChatSession.user_id == u.id)
+                          ).scalars().all()
+    for s in sessions:
+        msgs = db.execute(select(ChatMessage).where(ChatMessage.session_id == s.id)
+                          ).scalars().all()
+        for m in msgs:
+            # answers.message_id is nullable and the answer is corpus-level
+            # evidence of what was asked, not private content — keep it, unlink it.
+            db.execute(update(Answer).where(Answer.message_id == m.id)
+                       .values(message_id=None))
+            db.delete(m)
+        db.delete(s)
+    # Uploaded documents outlive whoever uploaded them.
+    db.execute(update(Document).where(Document.created_by == u.id)
+               .values(created_by=None))
+    db.delete(u)
+    audit.record(db, action="user_delete", actor_user_id=user.user_id,
+                 actor_name=user.name, org_id=user.org_id, target_type="user",
+                 target_id=username,
+                 request_meta={"conversations_removed": len(sessions)})
+    db.commit()

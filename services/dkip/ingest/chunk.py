@@ -35,12 +35,24 @@ def chunk_parsed(parsed: Parsed) -> list[Chunk]:
     char_cursor = 0
 
     # Group consecutive blocks by section, then window within a section.
+    #
+    # A file with no detected headings has no section boundaries to split on, so
+    # the whole thing becomes one run and the windows below straddle unrelated
+    # material: a three-page flowchart PDF collapsed into a single chunk holding
+    # all three diagrams, which the reranker then scored near zero against any
+    # specific question — the passage was indexed but never retrievable. Where
+    # there are no headings the page *is* the structure, so fall back to it.
+    # Documents that do have headings keep the old behaviour, and a paragraph
+    # may still span a page break as it should.
     groups: list[tuple[str, list[Block]]] = []
+    last_key: tuple | None = None
     for b in parsed.blocks:
-        if groups and groups[-1][0] == b.section:
+        key = (b.section, None if b.section else b.page_start)
+        if groups and last_key == key:
             groups[-1][1].append(b)
         else:
             groups.append((b.section, [b]))
+        last_key = key
 
     for section, blocks in groups:
         words: list[str] = []

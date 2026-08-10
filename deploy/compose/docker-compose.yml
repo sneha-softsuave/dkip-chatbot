@@ -35,8 +35,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-    ports: ["5432:5432"]
-
+    ports: ["5433:5432"]
   qdrant:
     image: qdrant/qdrant:v1.12.4
     volumes: [qdrant:/qdrant/storage]

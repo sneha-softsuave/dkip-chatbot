@@ -22,8 +22,10 @@
     "pdfjs-dist": "^4.9.155",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
     "recharts": "^2.14.1",
+    "remark-gfm": "^4.0.1",
     "three": "^0.171.0",
     "zustand": "^5.0.2"
   },
